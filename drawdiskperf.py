@@ -29,18 +29,15 @@ def get_cpuprof(fpath):
 def get_ioprof(fpath):
     throughput, iops, ioutil = [], [], []
     tmp = []
-    devpat = re.compile(r'fio[a-h]')
+    devpat = re.compile(r'sda')
     for line in open(fpath):
         val = line.split()
         if not val:
-            if tmp:
-                ioutil.append(sum(tmp) / len(tmp))
-                tmp = []
-        elif val[0] == "md0":
+            continue
+        elif val[0] == "sda":
             iops.append(float(val[3]))
             throughput.append(float(val[5]) * 0.001)
-        elif devpat.match(val[0]):
-            tmp.append(float(val[11]))
+            ioutil.append(float(val[11]))
     return (throughput, iops, ioutil)
 
 def ceiltop(val):
