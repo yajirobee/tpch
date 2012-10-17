@@ -23,7 +23,7 @@ def get_cpuprof(fpath):
             if date:
                 sysutil.append(util)
             date = val[0]
-            util = float(val[2])
+            util = float(val[3])
     return sysutil
 
 def get_ioprof(fpath):
@@ -38,7 +38,7 @@ def get_ioprof(fpath):
                 tmp = []
         elif val[0] == "md0":
             iops.append(float(val[3]))
-            throughput.append(float(val[5]) * 0.001)
+            throughput.append(float(val[5]) * 0.0005)
         elif devpat.match(val[0]):
             tmp.append(float(val[11]))
     return (throughput, iops, ioutil)
