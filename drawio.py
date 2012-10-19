@@ -35,7 +35,7 @@ class ioprofiler(object):
                 tmp.append(float(val[11]))
         return rmbps, wmbps, riops, wiops, ioutil
 
-    def get_normioprof(fpath):
+    def get_normioprof(self, fpath):
         rmbps, wmbps, riops, wiops, ioutil = [], [], [], [], []
         for line in open(fpath):
             val = line.split()
