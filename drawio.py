@@ -66,6 +66,7 @@ if __name__ == "__main__":
     gp('set output "{0}"'.format(fpath))
     gp.xlabel("elapsed time(s)")
     gp.ylabel("MBps")
+    gp('set grid')
     gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
                            with_ = "lines", title = "read MBps")
     gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
@@ -80,6 +81,7 @@ if __name__ == "__main__":
     gp('set output "{0}"'.format(fpath))
     gp.xlabel("elapsed time(s)")
     gp.ylabel("iops")
+    gp('set grid')
     gdriops = Gnuplot.Data(range(len(riops)), riops,
                            with_ = "lines", title = "read iops")
     gdwiops = Gnuplot.Data(range(len(wiops)), wiops,

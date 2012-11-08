@@ -37,6 +37,8 @@ if __name__ == "__main__":
     gp.ylabel("util(%)")
     gp('set yrange [0:100]')
     gp('set key outside')
+    gp('set grid front')
+    gp('set style fill pattern 1 border')
     gd = []
     xlen = len(coreutil)
     piledatas = [[] for i in range(len(keys))]
@@ -44,10 +46,6 @@ if __name__ == "__main__":
         piledatas[0].append(vals[0])
         for i in range(1, len(keys)):
             piledatas[i].append(piledatas[i - 1][-1] + vals[i])
-    '''
-    gd = [Gnuplot.Data(range(xlen), ydata, with_ = "lines", title = key)
-          for key, ydata in zip(keys, piledatas)]
-    '''
     gd = []
     gd.append(Gnuplot.Data(range(xlen), piledatas[0],
                            with_ = "filledcurve x1", title = keys[0]))
