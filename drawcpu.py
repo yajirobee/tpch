@@ -44,8 +44,16 @@ if __name__ == "__main__":
         piledatas[0].append(vals[0])
         for i in range(1, len(keys)):
             piledatas[i].append(piledatas[i - 1][-1] + vals[i])
+    '''
     gd = [Gnuplot.Data(range(xlen), ydata, with_ = "lines", title = key)
           for key, ydata in zip(keys, piledatas)]
+    '''
+    gd = []
+    gd.append(Gnuplot.Data(range(xlen), piledatas[0],
+                           with_ = "filledcurve x1", title = keys[0]))
+    for i in range(1, len(keys)):
+        gd.append(Gnuplot.Data(range(xlen), piledatas[i], piledatas[i - 1],
+                               with_ = "filledcurve", title = keys[i]))
     gp.plot(*gd)
     sys.stdout.write("output {0}\n".format(fpath))
     gp.close()
