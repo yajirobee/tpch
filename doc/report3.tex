@@ -1,0 +1,25 @@
+\documentclass[11pt,a4paper]{jsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{ascmac}
+
+\title{TPC-H performance measure}
+\author{Keisuke Suzuki}
+
+\begin{document}
+\maketitle
+\section{概要}
+\begin{itemize}
+ \item DBMS : PostgreSQL 9.2
+ \item RAID0 : iodrive x8 (chunk size = 64KB)
+ \item 各テーブルのprimary key上にB-tree indexを構築
+ \item Scale Factor = 100
+ \item shared buffer = 8GB
+ \item 各クエリの実行時の状況をiostatとmpstatで1秒おきに監視
+\end{itemize}
+
+\section{結果}
+
+\end{document}
