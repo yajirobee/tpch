@@ -1,0 +1,231 @@
+\documentclass[11pt,a4paper]{jsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{ascmac}
+\usepackage{subfigure}
+\newlength{\subfigwidth}
+\newlength{\subfigcolsep}
+
+\graphicspath{{./img/}}
+
+\title{TPC-H performance measure}
+\author{Keisuke Suzuki}
+
+\begin{document}
+\maketitle
+\section{概要}
+\begin{itemize}
+ \item DBMS : PostgreSQL 9.2
+ \item RAID0 : iodrive x8 (chunk size = 64KB)
+ \item 各テーブルのprimary key上にB-tree indexを構築
+ \item Scale Factor = 100
+ \item shared buffer = 8GB
+ \item 各クエリの実行時の状況をiostatとmpstatで1秒おきに監視
+\end{itemize}
+
+\section{結果}
+
+\subsection*{vmswappiness = 60}
+\clearpage
+\subsubsection*{query 1}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{1core1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:1cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{1iops.eps}
+  \label{fig:11}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{1mbps.eps}
+   \label{fig:12}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:1}
+\end{figure}
+
+\clearpage
+\subsubsection*{countlineitem}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{countlineitemcore1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:3cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{countlineitemiops.eps}
+  \label{fig:31}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{countlineitemmbps.eps}
+   \label{fig:32}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:3}
+\end{figure}
+\clearpage
+\subsection*{vmswappiness = 0}
+\subsubsection*{query 1}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{vms01core1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:4cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{vms01iops.eps}
+  \label{fig:41}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{vms01mbps.eps}
+   \label{fig:42}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:4}
+\end{figure}
+
+\clearpage
+\subsubsection*{query 3}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{vms03_1core1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:5cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{vms03_1iops.eps}
+  \label{fig:51}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{vms03_1mbps.eps}
+   \label{fig:52}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:5}
+\end{figure}
+
+\clearpage
+\subsubsection*{countlineitem}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{vms0countlineitemcore1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:6cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{vms0countlineitemiops.eps}
+  \label{fig:61}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{vms0countlineitemmbps.eps}
+   \label{fig:62}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:6}
+\end{figure}
+\clearpage
+\subsection*{vmswappiness = 0, swap off}
+\subsubsection*{query 1}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{swapoff1core1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:7cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{swapoff1iops.eps}
+  \label{fig:71}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{swapoff1mbps.eps}
+   \label{fig:72}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:7}
+\end{figure}
+
+\clearpage
+\subsubsection*{query 3}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{swapoff3core1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:8cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{swapoff3iops.eps}
+  \label{fig:81}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{swapoff3mbps.eps}
+   \label{fig:82}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:8}
+\end{figure}
+
+\clearpage
+\subsubsection*{countlineitem}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=10mm]{swapoffcountlineitemcore1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:9cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{swapoffcountlineitemiops.eps}
+  \label{fig:91}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{swapoffcountlineitemmbps.eps}
+   \label{fig:92}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:9}
+\end{figure}
+
+\end{document}
