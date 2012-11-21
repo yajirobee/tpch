@@ -3,7 +3,7 @@
 import sys, os, re, Gnuplot
 import plotutil
 
-terminaltype = "eps"
+terminaltype = "png"
 if terminaltype != "png" and terminaltype != "eps":
     sys.stdout.write("wrong terminal type\n")
     sys.exit(1)
