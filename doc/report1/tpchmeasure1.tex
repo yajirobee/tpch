@@ -1,0 +1,139 @@
+\documentclass[11pt,a4paper]{jsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{ascmac}
+\graphicspath{{../img/}}
+
+\title{TPC-Hによるiodriveの性能計測}
+\author{鈴木恵介}
+
+\begin{document}
+\maketitle
+\section{概要}
+\begin{itemize}
+ \item iodrive 8luでraid0を構築(chunk size = 64KB)
+ \item raid上にpostgresqlのtable spaceを作りこの上にDBを載せる
+ \item 各tableのprimary key上にB-tree indexを構築
+ \item scale factor = 100
+ \item Query1-10について実行時間を測定、また1秒おきにiostatで監視
+\end{itemize}
+
+\section{結果}
+図ではiostatで取得したrsec/s、\%utilのカラムをplot
+
+\newpage
+\subsection{Query 1}
+実行時間 : 61m8.672s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{1ioprof.eps}
+ \end{center}
+ \caption{Query 1結果}
+ \label{fig:q1}
+\end{figure}
+
+\subsection{Query 2}
+実行時間 : 2m26.003s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{2ioprof.eps}
+ \end{center}
+ \caption{Query 2結果}
+ \label{fig:q2}
+\end{figure}
+
+\newpage
+\subsection{Query 3}
+実行時間 : 8m37.357s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{3ioprof.eps}
+ \end{center}
+ \caption{Query 3結果}
+ \label{fig:q3}
+\end{figure}
+
+\subsection{Query 4}
+実行時間 : 8m23.797s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{4ioprof.eps}
+ \end{center}
+ \caption{Query 4結果}
+ \label{fig:q4}
+\end{figure}
+
+\newpage
+\subsection{Query 5}
+実行時間 : 9m58.854s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{5ioprof.eps}
+ \end{center}
+ \caption{Query 5結果}
+ \label{fig:q5}
+\end{figure}
+
+\subsection{Query 6}
+実行時間 : 4m15.942s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{6ioprof.eps}
+ \end{center}
+ \caption{Query 6結果}
+ \label{fig:q6}
+\end{figure}
+
+\subsection{Query 7}
+実行時間 : 8m47.246s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{7ioprof.eps}
+ \end{center}
+ \caption{Query 7結果}
+ \label{fig:q7}
+\end{figure}
+
+\subsection{Query 8}
+実行時間 : 10m14.357s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{8ioprof.eps}
+ \end{center}
+ \caption{Query 8結果}
+ \label{fig:q8}
+\end{figure}
+
+\subsection{Query 9}
+実行時間 : 34m27.994s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{9ioprof.eps}
+ \end{center}
+ \caption{Query 9結果}
+ \label{fig:q9}
+\end{figure}
+
+\subsection{Query 10}
+実行時間 : 10m57.973s
+
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=90mm]{10ioprof.eps}
+ \end{center}
+ \caption{Query 10結果}
+ \label{fig:q10}
+\end{figure}
+
+\end{document}
