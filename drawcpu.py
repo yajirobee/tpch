@@ -3,11 +3,6 @@
 import sys, os, re, Gnuplot
 import plotutil
 
-terminaltype = "png"
-if terminaltype != "png" and terminaltype != "eps":
-    sys.stdout.write("wrong terminal type\n")
-    sys.exit(1)
-
 def get_cpuprof(fpath, core):
     coreutil = []
     for line in open(fpath):
@@ -21,12 +16,23 @@ def get_cpuprof(fpath, core):
 keys = ("usr", "nice", "sys", "iowait", "irq", "soft", "steal", "guest", "idle")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.stdout.write("Usage : {0} cpuproffile core\n".format(sys.argv[0]))
+    if len(sys.argv) == 3:
+        cpufile = sys.argv[1]
+        core = sys.argv[2]
+        terminaltype = "png"
+    elif len(sys.argv) == 4:
+        cpufile = sys.argv[1]
+        core = sys.argv[2]
+        terminaltype = sys.argv[3]
+    else:
+        sys.stdout.write(
+            "Usage : {0} mpstatfile core [eps|png]\n".format(sys.argv[0]))
         sys.exit(0)
 
-    cpufile = sys.argv[1]
-    core = sys.argv[2]
+    if terminaltype != "png" and terminaltype != "eps":
+        sys.stdout.write("wrong terminal type\n")
+        sys.exit(1)
+
     coreutil = get_cpuprof(cpufile, core)
 
     fprefix = cpufile.rsplit('.', 1)[0]

@@ -3,11 +3,6 @@
 import sys, os, re, Gnuplot
 import plotutil
 
-terminaltype = "png"
-if terminaltype != "png" and terminaltype != "eps":
-    sys.stdout.write("wrong terminal type\n")
-    sys.exit(1)
-
 class ioprofiler(object):
     def __init__(self, devname):
         self.devname = devname
@@ -50,12 +45,23 @@ class ioprofiler(object):
         return rmbps, wmbps, riops, wiops, ioutil
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.stdout.write("Usage : {0} ioproffile devname\n".format(sys.argv[0]))
+    if len(sys.argv) == 3:
+        iofile = sys.argv[1]
+        devname = sys.argv[2]
+        terminaltype = "png"
+    elif len(sys.argv) == 4:
+        iofile = sys.argv[1]
+        devname = sys.argv[2]
+        terminaltype = sys.argv[3]
+    else:
+        sys.stdout.write(
+            "Usage : {0} iostatfile devname [eps|png]\n".format(sys.argv[0]))
         sys.exit(0)
 
-    iofile = sys.argv[1]
-    devname = sys.argv[2]
+    if terminaltype != "png" and terminaltype != "eps":
+        sys.stdout.write("wrong terminal type\n")
+        sys.exit(1)
+
     ioprof = ioprofiler(devname)
     rmbps, wmbps, riops, wiops, ioutil = ioprof.get_ioprof(iofile)
     fprefix = iofile.rsplit('.', 1)[0]
