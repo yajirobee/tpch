@@ -1,0 +1,4 @@
+graph{
+    graph [rankdir = BT]
+    alpha -- beta;
+}
