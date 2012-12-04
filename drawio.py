@@ -95,3 +95,22 @@ if __name__ == "__main__":
     gp.plot(gdriops, gdwiops)
     sys.stdout.write("output {0}\n".format(fpath))
     gp.close()
+
+    # draw iosize graph
+    gp = plotutil.gpinit(terminaltype)
+    fpath = "{0}iosize.{1}".format(fprefix, terminaltype)
+    gp('set output "{0}"'.format(fpath))
+    gp.xlabel("elapsed time(s)")
+    gp.ylabel("iosize (KB)")
+    gp('set grid')
+    rios = [(rmb * 1000.) / rio if rio != 0 else 0.
+            for rmb, rio in zip(rmbps, riops)]
+    wios = [(wmb * 1000) / wio if wio != 0 else 0.
+            for wmb, wio in zip(wmbps, wiops)]
+    gdrios = Gnuplot.Data(range(len(rios)), rios,
+                          with_ = "lines", title = "read iosize")
+    gdwios = Gnuplot.Data(range(len(wios)), wios,
+                          with_ = "lines", title = "write iosize")
+    gp.plot(gdrios, gdwios)
+    sys.stdout.write("output {0}\n".format(fpath))
+    gp.close()
