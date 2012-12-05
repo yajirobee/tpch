@@ -1,0 +1,39 @@
+graph query8core{
+    ordering = out;
+    Join1 [label = "Nested Loop\n(supplier.s_nationkey = n2.n_nationkey)", shape = box];
+    Join2 [label = "Hash Join\n(lineitem.l_suppkey = supplier.s_suppkey)", shape = box];
+    Join3 [label = "Hash Join\n(lineitem.l_partkey = part.p_partkey)", shape = box];
+    Join4 [label = "Hash Join\n(lineitem.l_orderkey = orders.o_orderkey)", shape = box];
+    Join5 [label = "Hash Join\n(orders.o_custkey = customer.c_custkey)", shape = box];
+    Join6 [label = "Hash Join\n(customer.c_nationkey = n1.n_nationkey)", shape = box];
+    Join7 [label = "Hash Join\n(n1.n_regionkey = region.r_regionkey)", shape = box];
+    Filter1 [label = "Fileter\n(p_type = 'ECONOMY ANODIZED STEEL')"
+             shape = trapezium, fixedsize = true, width = 5.5, height = .6];
+    Filter2 [label = "Filter\n(1995-01-01 <= o_orderdate <= 1996-12-31)",
+             shape = trapezium, fixedsize = true, width = 6., height = .6];
+    Filter3 [label = "Filter\n(r_name = 'AMERICA')",
+             shape = trapezium, fixedsize = true, width = 3., height = .6];
+    Hash1 [label = "Hash", shape = box];
+    Hash2 [label = "Hash", shape = box];
+    Hash3 [label = "Hash", shape = box];
+    Hash4 [label = "Hash", shape = box];
+    Hash5 [label = "Hash", shape = box];
+    Hash6 [label = "Hash", shape = box];
+    Materialize1 [label = "Materialize", shape = box];
+
+    Join1 -- Materialize1;
+    Materialize1  -- nation2;
+    Join1 -- Join2;
+    Join2 -- Hash1 -- supplier;
+    Join2 -- Join3;
+    Join3 -- Hash2 -- Filter1 -- part;
+    Join3 -- Join4;
+    Join4 -- Hash3 -- Join5;
+    Join4 -- lineitem;
+    Join5 -- Hash4 -- Join6;
+    Join5 -- Filter2 -- orders;
+    Join6 -- Hash5 -- Join7;
+    Join6 -- customer;
+    Join7 -- Hash6 -- Filter3 -- region;
+    Join7 -- nation1;
+}
