@@ -28,35 +28,6 @@
 \end{itemize}
 
 \clearpage
-\section{Query : count lineitem}
-最初の数十秒間だけ少しスループットが大きくなる現象について。
-NUMAによるローカルメモリとリモートメモリのページキャッシュの
-書き込みのスループットの差が原因と考えられる。
-そこで、ローカルメモリが空の状態と半分埋まった状態からスタートし、
-スループットが大きくなっている時間に変化があるか確認する。
-\subsection{計測結果}
-\begin{figure}[thbp]
- \setlength{\subfigwidth}{.5\linewidth}
- \addtolength{\subfigwidth}{-.5\subfigcolsep}
- \begin{minipage}[b]{\subfigwidth}
-  \subfigure[local memory : empty]
-  {\includegraphics[width=75mm]{countlineitemmbps.eps}
-  \label{fig:node1empty}}
- \end{minipage}
-  \begin{minipage}[b]{\subfigwidth}
-    \subfigure[local memory : 50\% occupied]
-   {\includegraphics[width=75mm]{countlineitem_node1halfmbps.eps}
-   \label{fig:node1half}}
-  \end{minipage}
-  \caption{MBPS}
-  \label{fig:countlineitem}
-\end{figure}
-図\ref{fig:node1empty}と\ref{fig:node1half}でスループットが大きくなって
-いる時間が大体半分程度になっている。
-numactl --hardwareで一定時間おきにメモリの使用状況を追ってみても、始めに
-ローカルメモリから使用されていることが確認できた。
-
-\clearpage
 \subsection{Query 1 by index scan on l\_shipdate}
 lineitemのl\_shipdate attribute上にB-tree indexを構築し、
 lineitem上のデータの選択率を絞って、index scanさせる。
@@ -117,7 +88,7 @@ lineitem上のデータの選択率を絞って、index scanさせる。
    \label{fig:1idxra2048mbps}}
   \end{minipage}
   \caption{IO spec}
-n  \label{fig:1idxra2048}
+  \label{fig:1idxra2048}
 \end{figure}
 
 \begin{figure}[thbp]
@@ -128,11 +99,9 @@ n  \label{fig:1idxra2048}
  \label{fig:1idx2048iosize}
 \end{figure}
 
-時間の経過と共に徐々にスループットが増加しているが、IOsizeの増加から、
-look-aheadの効果ではないかと考えられる。
-
 \subsection{look-aheadをoffにした場合}
-blockdev --setra 0でデバイスに対するlook-aheadを切って測定する。
+look-aheadの効果を考慮し、blockdev --setra 0でデバイスに対する
+look-aheadを切って測定する。
 \begin{figure}[thbp]
  \begin{center}
   \includegraphics[width=100mm]{1idxscan_ra0core1.eps}
@@ -163,6 +132,37 @@ blockdev --setra 0でデバイスに対するlook-aheadを切って測定する�
  \caption{IO size}
  \label{fig:1idx0iosize}
 \end{figure}
+
+\subsection{計算部分を消去した場合}
+律速の原因がIOであることを確認するため、Queryの計算部分を除去して実行す
+る。
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=100mm]{1idxscanmin_ra2048core1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:1idxmin2048core1}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{1idxscanmin_ra2048iops.eps}
+  \label{fig:1idxramin2048iops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=75mm]{1idxscanmin_ra2048mbps.eps}
+   \label{fig:1idxramin2048mbps}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:1idxramin0}
+\end{figure}
+
+計算部分を除去していない場合とほとんど差はなく、IOの速度に律速されている
+ことがわかる。
+
+以下に示すマイクロベンチの結果と比較すると、
 
 
 \end{document}
