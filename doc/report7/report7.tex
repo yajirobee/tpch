@@ -29,9 +29,8 @@
 
 \clearpage
 \section{Query 1 by index scan on l\_shipdate}
-look-aheadを切った状態でのIO性能が乱れていたので、その原因を探る。
-
 \subsection{random read microbenchmark}
+look-aheadを切った状態でのIO性能が乱れていたので、その原因を探る。
 測定時の条件
 \begin{itemize}
  \item look-ahead (read-ahead): 0
@@ -167,7 +166,7 @@ Events (md0): 5,721,230 entries
 考えられる。
 実際、他のサイズでIOを発行した場合も、OSからは4KBのIOとして発行されてい
 ることが確認できた。
-以下は、16KBのサイズでアクセスした場合の結果である。
+以下は、16KBのサイズでアクセスした場合の結果。
 \begin{verbatim}
   9,0    1        1     0.000000000 39810  Q   R 1894937088 + 8 [randomread]
   9,0    1        2     0.000008815 39810  U   N [randomread] 0
@@ -188,4 +187,5 @@ CPU1 (md0):
 Throughput (R/W): 0KiB/s / 0KiB/s
 Events (md0): 9,663,852 entries
 \end{verbatim}
+
 \end{document}
