@@ -4,6 +4,7 @@
 \usepackage{bm}
 \usepackage{graphicx}
 \usepackage{ascmac}
+\usepackage[usenames]{color}
 \usepackage{subfigure}
 \newlength{\subfigwidth}
 \newlength{\subfigcolsep}
@@ -133,27 +134,28 @@ look-aheadを切って測定する。
  \label{fig:1idx0iosize}
 \end{figure}
 
+\clearpage
 \subsection{計算部分を消去した場合}
 律速の原因がIOであることを確認するため、Queryの計算部分を除去して実行す
 る。
 \begin{figure}[thbp]
  \begin{center}
-  \includegraphics[width=100mm]{1idxscanmin_ra2048core1.eps}
+  \includegraphics[width=100mm]{1idxscanmin_ra0core1.eps}
  \end{center}
  \caption{cpu utilization}
- \label{fig:1idxmin2048core1}
+ \label{fig:1idxmin0core1}
 \end{figure}
 
 \begin{figure}[thbp]
  \setlength{\subfigwidth}{.5\linewidth}
  \addtolength{\subfigwidth}{-.5\subfigcolsep}
  \begin{minipage}[b]{\subfigwidth}
-  \subfigure[IOPS]{\includegraphics[width=75mm]{1idxscanmin_ra2048iops.eps}
-  \label{fig:1idxramin2048iops}}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{1idxscanmin_ra0iops.eps}
+  \label{fig:1idxramin0iops}}
  \end{minipage}
   \begin{minipage}[b]{\subfigwidth}
-    \subfigure[MBPS]{\includegraphics[width=75mm]{1idxscanmin_ra2048mbps.eps}
-   \label{fig:1idxramin2048mbps}}
+    \subfigure[MBPS]{\includegraphics[width=75mm]{1idxscanmin_ra0mbps.eps}
+   \label{fig:1idxramin0mbps}}
   \end{minipage}
   \caption{IO spec}
   \label{fig:1idxramin0}
@@ -162,7 +164,32 @@ look-aheadを切って測定する。
 計算部分を除去していない場合とほとんど差はなく、IOの速度に律速されている
 ことがわかる。
 
-以下に示すマイクロベンチの結果と比較すると、
+以下に示すマイクロベンチの結果と比較すると、random writeで示されている値
+よりは少し大きめにIOPSが出ている。
+これはlook-aheadが効いていることも踏まえると、アクセスが完全にrandomには
+なっておらず、アクセス先のアドレスがある程度連続していることが考えられる。
 
+\begin{table}[thbp]
+ \caption{read microbenchmark (file system : ext4)}
+ \label{tb:rmicro}
+ \begin{center}
+  \begin{tabular}{lcl}\hline
+   iosize & seq iops & rand iops \\ \hline
+   512 & 1079447.32 & 6350.70 \\
+   1024 & 848824.37 & 4803.08 \\
+   2048 & 487995.31 & 4560.32 \\
+   4096 & 299419.12 & 4564.31 \\
+   \color{red}8192 & \color{red}152264.94 & \color{red}4073.21 \\
+   16384 & 81491.62 & 3988.72 \\
+   32768 & 41422.61 & 3603.81 \\
+   65536 & 21135.16 & 3049.95 \\
+   131072 & 10480.60 & 2474.32 \\
+   262144 & 5178.59 & 1777.12 \\
+   524288 & 2611.02 & 1169.90 \\
+   1048576 & 1358.93 & 574.63 \\
+   2097152 & 666.17 & 427.92 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
 
 \end{document}
