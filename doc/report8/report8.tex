@@ -27,165 +27,210 @@
  \item 各クエリの実行時の状況をiostatとmpstatで1秒おきに監視
 \end{itemize}
 
-\clearpage
 \section{Query 1 by index scan on l\_shipdate}
-\subsection{random read microbenchmark}
-look-aheadを切った状態でのIO性能が乱れていたので、その原因を探る。
-測定時の条件
+\subsection{microbenchmark}
+microbenchで計測したIOの性能がread-aheadの有無やO\_DIRECTの有無に
+よって、乱れる場合があった。
+乱れの原因となっている部分を確認するため、以下のパラメタを変化させて挙動
+を観察する。(iosize = 8KB)
+
+パラメタ
 \begin{itemize}
- \item look-ahead (read-ahead): 0
- \item iosize: 8KB
- \item raw device access
+ \item read-ahead: 0 or 2048
+ \item O\_DIRECT: 有 or 無
+ \item iodrive単体 or raid0
 \end{itemize}
 
-\subsubsection{With O\_DIRECT flag}
-まずOSのバッファリングなどを切った状態でのアクセス時の性能を示す。
+\clearpage
+\subsubsection{random read microbenchmark結果}
 \begin{figure}[thbp]
  \setlength{\subfigwidth}{.5\linewidth}
  \addtolength{\subfigwidth}{-.5\subfigcolsep}
  \begin{minipage}[b]{\subfigwidth}
-  \subfigure[IOPS]{\includegraphics[width=75mm]{randomread_md0_8192_wodirectiops.eps}
-  \label{fig:rand8192wodiops}}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{md0_rand_8k_ra0iops.eps}
+  \label{fig:md0rand8k0iops}}
  \end{minipage}
   \begin{minipage}[b]{\subfigwidth}
-    \subfigure[iosize]{\includegraphics[width=75mm]{randomread_md0_8192_wodirectiosize.eps}
-   \label{fig:rand8192wodiosize}}
+   \subfigure[iosize]{\includegraphics[width=75mm]{md0_rand_8k_ra0iosize.eps}
+   \label{fig:md0rand8k0iosize}}
   \end{minipage}
-  \caption{IO spec (iosize = 8KB)}
-  \label{fig:rand8192wod}
+  \caption{read-ahead = 0, w/o O\_DIRECT, raid0}
+  \label{fig:md0rand8k0}
 \end{figure}
 
-\begin{table}[htbp]
- \begin{center}
-  \caption{IO spec average (iosize = 8KB) \newline
-  (IOPS = (io issued by benchmark / elapsed time))}
-  \label{tbl:rand8192wod}
- \begin{tabular}{cc} \hline
-  IOPS & MBPS \\ \hline
-  4578 & 37.5 \\ \hline
- \end{tabular}
- \end{center}
-\end{table}
-
-\clearpage
-benchmark実行時のIOの発行状況をblktraceで監視すると以下の通りであった。
-\begin{verbatim}
-  9,0    1        1     0.000000000 38969  Q   R 1894937090 + 16 [randomread]
-  9,0    1        2     0.000011450 38969  U   N [randomread] 0
-  9,0    1        3     0.000331059 38969  Q   R 1645272306 + 13 [randomread]
-  9,0    1        4     0.000338372 38969  Q   R 1645272319 + 3 [randomread]
-  9,0    1        5     0.000339942 38969  X   R 1645272319 / 1645272320 [randomread]
-  9,0    1        6     0.000347454 38969  U   N [randomread] 0
-  9,0    1        7     0.000611996 38969  Q   R 2143216519 + 16 [randomread]
-  9,0    1        8     0.000615720 38969  U   N [randomread] 0
-  ...
- CPU1 (md0):
- Reads Queued:       1,172K,    7,882MiB Writes Queued:           0,        0KiB
- Read Dispatches:        0,        0KiB  Write Dispatches:        0,        0KiB
- Reads Requeued:         0               Writes Requeued:         0
- Reads Completed:        0,        0KiB  Writes Completed:        0,        0KiB
- Read Merges:            0,        0KiB  Write Merges:            0,        0KiB
- Read depth:             0               Write depth:             0
- IO unplugs:      1,000,000              Timer unplugs:           0
-
-Throughput (R/W): 0KiB/s / 0KiB/s
-Events (md0): 2,273,525 entries
-\end{verbatim}
-
-\clearpage
-\subsubsection{Without O\_DIRECT flag}
-O\_DIRECT flagを使用しない状態でのアクセス時の性能を示す。
 \begin{figure}[thbp]
  \setlength{\subfigwidth}{.5\linewidth}
  \addtolength{\subfigwidth}{-.5\subfigcolsep}
  \begin{minipage}[b]{\subfigwidth}
-  \subfigure[IOPS]{\includegraphics[width=75mm]{randomread_md0_8192iops.eps}
-  \label{fig:rand8192iops}}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{fioa_rand_8k_ra0iops.eps}
+  \label{fig:fioarand8k0iops}}
  \end{minipage}
   \begin{minipage}[b]{\subfigwidth}
-    \subfigure[iosize]{\includegraphics[width=75mm]{randomread_md0_8192iosize.eps}
-   \label{fig:rand8192iosize}}
+    \subfigure[iosize]{\includegraphics[width=75mm]{fioa_rand_8k_ra0iosize.eps}
+   \label{fig:fioarand8k0iosize}}
   \end{minipage}
-  \caption{IO spec (iosize = 8KB)}
-  \label{fig:rand8192}
+  \caption{read-ahead = 0, w/o O\_DIRECT, standalone}
+  \label{fig:fioarand8k0}
 \end{figure}
 
-\begin{table}[htbp]
- \begin{center}
-  \caption{IO spec average (iosize = 8KB) \newline
-  (IOPS = (io issued by benchmark / elapsed time))}
-  \label{tbl:rand8192}
- \begin{tabular}{cc} \hline
-  IOPS & MBPS \\ \hline
-  2787 & 22.8 \\ \hline
- \end{tabular}
- \end{center}
-\end{table}
-
-図\ref{fig:rand8192iosize}を見ると、クエリ実行時と同様の性能の乱れが見ら
-れる。
-この乱れは、iodriveをOSのbufferingを有効にして使用したときに生じる、デバ
-イスの特性に由来するものではないかと考えられる。
-
-また、iosizeに着目すると、本来8KBでIOを発行しているはずであるが、
-実際のIOは半分の4KBで出ている。
-iostatで計測したIOPSと、benchmarkで計算したIOPSも数値としてはあっていな
-い。
-
-そこでblktraceでbenchmark実行時のIOの発行状況を監視すると以下の通りであっ
-た。
+図\ref{fig:md0rand8k0iops}では、性能が大きく乱れており、同じ計測を繰り
+返すと毎回異なるグラフになっていて、実行時間も大きく変化していた。
+iodrive単体の上での計測ではこのような結果にはならなかったので、
+software raidの部分に原因があると想定される。
 
 \clearpage
-\begin{verbatim}
-  9,0    1        1     0.000000000 39618  Q   R 1894937088 + 8 [randomread]
-  9,0    1        2     0.000009686 39618  U   N [randomread] 0
-  9,0    1        3     0.000274736 39618  Q   R 1894937096 + 8 [randomread]
-  9,0    1        4     0.000278264 39618  U   N [randomread] 0
-  9,0    1        5     0.000503299 39618  Q   R 1894937104 + 8 [randomread]
-  9,0    1        6     0.000509047 39618  U   N [randomread] 0
-  9,0    1        7     0.000794094 39618  Q   R 1645272304 + 8 [randomread]
-  9,0    1        8     0.000800924 39618  U   N [randomread] 0
-  9,0    1        9     0.001145873 39618  Q   R 1645272312 + 8 [randomread]
-  9,0    1       10     0.001152079 39618  U   N [randomread] 0
-  ...
-CPU1 (md0):
- Reads Queued:       2,860K,   11,442MiB Writes Queued:           0,        0KiB
- Read Dispatches:        0,        0KiB  Write Dispatches:        0,        0KiB
- Reads Requeued:         0               Writes Requeued:         0
- Reads Completed:        0,        0KiB  Writes Completed:        0,        0KiB
- Read Merges:            0,        0KiB  Write Merges:            0,        0KiB
- Read depth:             0               Write depth:             0
- IO unplugs:      2,860,599              Timer unplugs:           0
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{md0_rand_8k_ra0_woodirectiops.eps}
+  \label{fig:md0rand8k0wodiops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[iosize]{\includegraphics[width=75mm]{md0_rand_8k_ra0_woodirectiosize.eps}
+   \label{fig:md0rand8k0wodiosize}}
+  \end{minipage}
+  \caption{read-ahead = 0, w/ O\_DIRECT, raid0}
+  \label{fig:md0rand8k0wod}
+\end{figure}
 
-Throughput (R/W): 0KiB/s / 0KiB/s
-Events (md0): 5,721,230 entries
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{fioa_rand_8k_ra0_wodirectiops.eps}
+  \label{fig:fioarand8k0wodiops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[iosize]{\includegraphics[width=75mm]{fioa_rand_8k_ra0_wodirectiosize.eps}
+   \label{fig:fioarand8k0wodiosize}}
+  \end{minipage}
+  \caption{read-ahead = 0, w/ O\_DIRECT, standalone}
+  \label{fig:fioarand8k0wod}
+\end{figure}
+
+\clearpage
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{md0_rand_8k_ra2048iops.eps}
+  \label{fig:md0rand8k2048iops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[iosize]{\includegraphics[width=75mm]{md0_rand_8k_ra2048iosize.eps}
+   \label{fig:md0rand8k2048iosize}}
+  \end{minipage}
+  \caption{read-ahead = 2048, w/o O\_DIRECT, raid0}
+  \label{fig:md0rand8k2048}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{fioa_rand_8k_ra256iops.eps}
+  \label{fig:fioarand8k256iops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[iosize]{\includegraphics[width=75mm]{fioa_rand_8k_ra256iosize.eps}
+   \label{fig:fioarand8k256iosize}}
+  \end{minipage}
+  \caption{read-ahead = 256, w/o O\_DIRECT, standalone}
+  \label{fig:fioarand8k256}
+\end{figure}
+
+\clearpage
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{md0_rand_8k_ra2048_wodirectiops.eps}
+  \label{fig:md0rand8k2048wodiops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[iosize]{\includegraphics[width=75mm]{md0_rand_8k_ra2048_wodirectiosize.eps}
+   \label{fig:md0rand8k2048wodiosize}}
+  \end{minipage}
+  \caption{read-ahead = 2048, w/ O\_DIRECT, raid0}
+  \label{fig:md0rand8k2048wod}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=75mm]{fioa_rand_8k_ra256_wodirectiops.eps}
+  \label{fig:fioarand8k256wodiops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[iosize]{\includegraphics[width=75mm]{fioa_rand_8k_ra256_wodirectiosize.eps}
+   \label{fig:fioarand8k256wodiosize}}
+  \end{minipage}
+  \caption{read-ahead = 256, w/ O\_DIRECT, standalone}
+  \label{fig:fioarand8k256wod}
+\end{figure}
+
+raidの方では複数のLUにまたがるアドレスへのアクセスが含まれる場合があるた
+め、iosizeが8kよりは小くなっている。
+
+\clearpage
+\section{Query 8}
+簡単の為、Query8のうちのIOがメインとなる部分のみを実行する。
+
+\subsection{Query and Execution Plan}
+\begin{verbatim}
+ select
+	extract(year from o_orderdate) as o_year,
+	l_extendedprice * (1 - l_discount) as volume,
+	n2.n_name as nation
+from
+	part, supplier, lineitem, orders,
+	customer, nation n1, nation n2,	region
+where
+	p_partkey = l_partkey
+	and s_suppkey = l_suppkey
+	and l_orderkey = o_orderkey
+	and o_custkey = c_custkey
+	and c_nationkey = n1.n_nationkey
+	and n1.n_regionkey = r_regionkey
+	and r_name = 'AMERICA'
+	and s_nationkey = n2.n_nationkey
+	and o_orderdate between date '1995-01-01' and date '1996-12-31'
+	and p_type = 'ECONOMY ANODIZED STEEL'
 \end{verbatim}
 
-この結果をみると、OSから発行されるIOは4KBのサイズになっている。
-これはOSがページサイズ単位(4KB)にIOを分割して発行しているのではないかと
-考えられる。
-実際、他のサイズでIOを発行した場合も、OSからは4KBのIOとして発行されてい
-ることが確認できた。
-以下は、16KBのサイズでアクセスした場合の結果。
-\begin{verbatim}
-  9,0    1        1     0.000000000 39810  Q   R 1894937088 + 8 [randomread]
-  9,0    1        2     0.000008815 39810  U   N [randomread] 0
-  9,0    1        3     0.000352988 39810  Q   R 1894937096 + 8 [randomread]
-  9,0    1        4     0.000359066 39810  U   N [randomread] 0
-  9,0    1        5     0.000656633 39810  Q   R 1894937104 + 8 [randomread]
-  9,0    1        6     0.000662659 39810  U   N [randomread] 0
-  ...
-CPU1 (md0):
- Reads Queued:       4,831K,   19,327MiB Writes Queued:           0,        0KiB
- Read Dispatches:        0,        0KiB  Write Dispatches:        0,        0KiB
- Reads Requeued:         0               Writes Requeued:         0
- Reads Completed:        0,        0KiB  Writes Completed:        0,        0KiB
- Read Merges:            0,        0KiB  Write Merges:            0,        0KiB
- Read depth:             0               Write depth:             0
- IO unplugs:      4,831,926              Timer unplugs:           0
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=170mm]{query8.eps}
+ \end{center}
+ \caption{Query 8 execution plan}
+ \label{fig:query8}
+\end{figure}
 
-Throughput (R/W): 0KiB/s / 0KiB/s
-Events (md0): 9,663,852 entries
-\end{verbatim}
+\clearpage
+\subsection{結果}
+\begin{figure}[thbp]
+ \begin{center}
+  \includegraphics[width=110mm]{8corecore1.eps}
+ \end{center}
+ \caption{cpu utilization}
+ \label{fig:8cpu}
+\end{figure}
+
+\begin{figure}[thbp]
+ \setlength{\subfigwidth}{.5\linewidth}
+ \addtolength{\subfigwidth}{-.5\subfigcolsep}
+ \begin{minipage}[b]{\subfigwidth}
+  \subfigure[IOPS]{\includegraphics[width=8cm]{8coreiops.eps}
+  \label{fig:8coreiops}}
+ \end{minipage}
+  \begin{minipage}[b]{\subfigwidth}
+    \subfigure[MBPS]{\includegraphics[width=8cm]{8corembps.eps}
+   \label{fig:8corembps}}
+  \end{minipage}
+  \caption{IO spec}
+  \label{fig:8core}
+\end{figure}
 
 \end{document}

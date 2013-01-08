@@ -41,7 +41,7 @@ class ioprofiler(object):
                 wiops.append(float(val[4]))
                 rmbps.append(float(val[5]) * 512 * (10 ** -6)) # 5th column is rsec/s
                 wmbps.append(float(val[6]) * 512 * (10 ** -6)) # 6th column is wsec/s
-                iops.append(float(val[11]))
+                ioutil.append(float(val[11]))
         return rmbps, wmbps, riops, wiops, ioutil
 
 if __name__ == "__main__":
