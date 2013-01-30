@@ -21,9 +21,9 @@ graph query8core{
     Hash6 [label = "Hash", shape = box];
     Materialize1 [label = "Materialize", shape = box];
 
+    Join1 -- Join2;
     Join1 -- Materialize1;
     Materialize1  -- nation2;
-    Join1 -- Join2;
     Join2 -- Hash1 -- supplier;
     Join2 -- Join3;
     Join3 -- Hash2 -- Filter1 -- part;
