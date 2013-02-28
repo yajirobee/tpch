@@ -23,7 +23,7 @@ def getrefhist(iodumpfile):
         refdict = {int(vals[5], 16) : 1}
         for line in fo:
             vals = line.split()
-            time = (int(vals[0], 16) - stime) / 10000 ** 2
+            time = (int(vals[0], 16) - stime) / 1000 ** 3
             if time == elapsed:
                 relname = int(vals[5], 16)
                 if relname in refdict:
