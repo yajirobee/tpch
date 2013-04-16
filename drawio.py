@@ -44,6 +44,51 @@ class ioprofiler(object):
                 ioutil.append(float(val[11]))
         return rmbps, wmbps, riops, wiops, ioutil
 
+def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
+    rmbps, wmbps, riops, wiops, ioutil = ioprof
+    gp = plotutil.gpinit(terminaltype)
+    gp.xlabel("elapsed time(s)")
+    gp('set grid')
+
+    # draw mbps graph
+    output = "{0}mbps.{1}".format(outprefix, terminaltype)
+    gp('set output "{0}"'.format(output))
+    gp.ylabel("MBps")
+    gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
+                           with_ = "lines", title = "read MBps")
+    gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
+                           with_ = "lines", title = "write MBps")
+    gp.plot(gdrmbps, gdwmbps)
+    sys.stdout.write("output {0}\n".format(output))
+
+    # draw iops graph
+    output = "{0}iops.{1}".format(outprefix, terminaltype)
+    gp('set output "{0}"'.format(output))
+    gp.ylabel("iops")
+    gdriops = Gnuplot.Data(range(len(riops)), riops,
+                           with_ = "lines", title = "read iops")
+    gdwiops = Gnuplot.Data(range(len(wiops)), wiops,
+                           with_ = "lines", title = "write iops")
+    gp.plot(gdriops, gdwiops)
+    sys.stdout.write("output {0}\n".format(output))
+
+    # draw iosize graph
+    output = "{0}iosize.{1}".format(outprefix, terminaltype)
+    gp('set output "{0}"'.format(output))
+    gp.ylabel("iosize (KB)")
+    rios = [(rmb * 1000.) / rio if rio != 0 else 0.
+            for rmb, rio in zip(rmbps, riops)]
+    wios = [(wmb * 1000) / wio if wio != 0 else 0.
+            for wmb, wio in zip(wmbps, wiops)]
+    gdrios = Gnuplot.Data(range(len(rios)), rios,
+                          with_ = "lines", title = "read iosize")
+    gdwios = Gnuplot.Data(range(len(wios)), wios,
+                          with_ = "lines", title = "write iosize")
+    gp.plot(gdrios, gdwios)
+    sys.stdout.write("output {0}\n".format(output))
+
+    gp.close()
+
 if __name__ == "__main__":
     if len(sys.argv) == 3:
         iofile = sys.argv[1]
@@ -62,55 +107,8 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
-    ioprof = ioprofiler(devname)
-    rmbps, wmbps, riops, wiops, ioutil = ioprof.get_ioprof(iofile)
-    fprefix = iofile.rsplit('.', 1)[0]
+    ioprofiler = ioprofiler(devname)
+    ioprof = ioprofiler.get_ioprof(iofile)
+    outprefix = iofile.rsplit('.', 1)[0]
 
-    # draw mbps graph
-    gp = plotutil.gpinit(terminaltype)
-    fpath = "{0}mbps.{1}".format(fprefix, terminaltype)
-    gp('set output "{0}"'.format(fpath))
-    gp.xlabel("elapsed time(s)")
-    gp.ylabel("MBps")
-    gp('set grid')
-    gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
-                           with_ = "lines", title = "read MBps")
-    gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
-                           with_ = "lines", title = "write MBps")
-    gp.plot(gdrmbps, gdwmbps)
-    sys.stdout.write("output {0}\n".format(fpath))
-    gp.close()
-
-    # draw iops graph
-    gp = plotutil.gpinit(terminaltype)
-    fpath = "{0}iops.{1}".format(fprefix, terminaltype)
-    gp('set output "{0}"'.format(fpath))
-    gp.xlabel("elapsed time(s)")
-    gp.ylabel("iops")
-    gp('set grid')
-    gdriops = Gnuplot.Data(range(len(riops)), riops,
-                           with_ = "lines", title = "read iops")
-    gdwiops = Gnuplot.Data(range(len(wiops)), wiops,
-                           with_ = "lines", title = "write iops")
-    gp.plot(gdriops, gdwiops)
-    sys.stdout.write("output {0}\n".format(fpath))
-    gp.close()
-
-    # draw iosize graph
-    gp = plotutil.gpinit(terminaltype)
-    fpath = "{0}iosize.{1}".format(fprefix, terminaltype)
-    gp('set output "{0}"'.format(fpath))
-    gp.xlabel("elapsed time(s)")
-    gp.ylabel("iosize (KB)")
-    gp('set grid')
-    rios = [(rmb * 1000.) / rio if rio != 0 else 0.
-            for rmb, rio in zip(rmbps, riops)]
-    wios = [(wmb * 1000) / wio if wio != 0 else 0.
-            for wmb, wio in zip(wmbps, wiops)]
-    gdrios = Gnuplot.Data(range(len(rios)), rios,
-                          with_ = "lines", title = "read iosize")
-    gdwios = Gnuplot.Data(range(len(wios)), wios,
-                          with_ = "lines", title = "write iosize")
-    gp.plot(gdrios, gdwios)
-    sys.stdout.write("output {0}\n".format(fpath))
-    gp.close()
+    plot_ioprof(ioprof, outprefix, terminaltype)
