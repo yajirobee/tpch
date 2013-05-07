@@ -3,10 +3,17 @@
 import sys, os, glob, re, Gnuplot
 import drawio, drawcpu, plotutil
 
+iospecdict = {"md0" : {"seqread" : 1294, "randread" : 318, "randwrite" : 1000},
+              "sdb" : {"seqread" : 385, "randread" : 100, "randwrite" : 300}}
+
+restrictflg = True
+
 def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png", slide = False):
     eladict = {}
+    iodict = {}
     for d in glob.iglob(inputdir + "/workmem*"):
         elapsed = []
+        io = []
         match = re.search("workmem(\d+)(k|M|G)B", d)
         size = int(match.group(1))
         prefix = match.group(2)
@@ -22,13 +29,14 @@ def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png", sli
         for dd in glob.iglob(d + "/[0-9]*"):
             ioprofiler = drawio.ioprofiler(devname)
             for f in glob.iglob(dd + "/*.io"):
-                if slide:
-                    continue
                 ioprof = ioprofiler.get_ioprof(f)
+                io.append((sum(ioprof[0]), sum(ioprof[1])))
+                if restrictflg:
+                    continue
                 outprefix = f.rsplit('.', 1)[0] + d.rsplit("/", 1)[1]
                 drawio.plot_ioprof(ioprof, outprefix, terminaltype)
             for f in glob.iglob(dd + "/*.cpu"):
-                if slide:
+                if restrictflg:
                     continue
                 coreutil = drawcpu.get_cpuprof(f, corenum)
                 output = f.rsplit('.', 1)[0] + d.rsplit("/", 1)[1]
@@ -51,7 +59,10 @@ def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png", sli
         for i in range(len(ela)):
             ela[i] /= len(elapsed)
         eladict[size] = ela
-    elalist = sorted(eladict.items(), key = lambda x:int(x[0]))
+        r = [v[0] for v in io]
+        w = [v[1] for v in io]
+        iodict[size] = (sum(r) / len(r), sum(w) / len(w))
+
     gp = plotutil.gpinit(terminaltype)
     output = inputdir + "/elapsed." + terminaltype
     gp('set output "{0}"'.format(inputdir + "/elapsed." + terminaltype))
@@ -60,14 +71,28 @@ def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png", sli
     gp('set grid')
     gp('set logscale x')
     #gp('set format x "%.0e"')
-    gp('set yrange [0:800]')
+    gp('set yrange [0:*]')
     if slide:
         gp('set termoption font "Times-Roman,28"')
         plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
     else:
         plotprefdict = {"with_" : "linespoints" }
-    gd = Gnuplot.Data([int(v[0]) for v in elalist], [float(v[1][4]) for v in elalist], **plotprefdict)
-    gp.plot(gd)
+    elalist = sorted(eladict.items(), key = lambda x:int(x[0]))
+    gd = Gnuplot.Data([int(v[0]) for v in elalist],
+                      [float(v[1][4]) for v in elalist],
+                      title = "elapased", **plotprefdict)
+    seqio = (86. + 20 + 3 + 3) * 1024 + 173
+    seqcost = seqio / iospecdict[devname]["seqread"]
+    iocostlist = []
+    for k, v in sorted(iodict.items(), key = lambda x:int(x[0])):
+        cost = (seqcost
+                + (v[0] - seqio) / iospecdict[devname]["randread"]
+                + v[1] / iospecdict[devname]["randwrite"])
+        iocostlist.append((k, cost))
+    gdio = Gnuplot.Data([int(v[0]) for v in iocostlist],
+                        [v[1] for v in iocostlist],
+                        title = "iocost", **plotprefdict)
+    gp.plot(gd, gdio)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
@@ -93,4 +118,4 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
-    analyzeq(inputdir, dev, 1, terminaltype, True)
+    analyzeq(inputdir, dev, "1", terminaltype, False)
