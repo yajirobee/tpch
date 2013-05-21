@@ -7,8 +7,9 @@ iospecdict = {"md0" : {"seqread" : 1294, "randread" : 318, "randwrite" : 1000},
               "sdb" : {"seqread" : 385, "randread" : 100, "randwrite" : 300}}
 
 restrictflg = True
+slide = False
 
-def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png", slide = False):
+def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png"):
     eladict = {}
     iodict = {}
     for d in glob.iglob(inputdir + "/workmem*"):
@@ -66,21 +67,27 @@ def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png", sli
     gp = plotutil.gpinit(terminaltype)
     output = inputdir + "/elapsed." + terminaltype
     gp('set output "{0}"'.format(inputdir + "/elapsed." + terminaltype))
-    gp.xlabel("workmem(B)")
-    gp.ylabel("elapsed time (s)")
+    gp.xlabel("working memory")
+    gp.ylabel("Execution time [s]")
     gp('set grid')
     gp('set logscale x')
-    #gp('set format x "%.0e"')
-    gp('set yrange [0:*]')
+    gp('set format x "%.0s%cB"')
+    gp('set xrange [10000:*]')
+    gp('set yrange [0:1800]')
     if slide:
-        gp('set termoption font "Times-Roman,28"')
-        plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
+        if "eps" == terminaltype:
+            gp('set termoption font "Times-Roman,28"')
+            plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
+        elif "png" == terminaltype:
+            gp('set termoption font "Times-Roman,20"')
+            plotprefdict = {"with_" : "linespoints lt 1 lw 4"}
     else:
         plotprefdict = {"with_" : "linespoints" }
     elalist = sorted(eladict.items(), key = lambda x:int(x[0]))
     gd = Gnuplot.Data([int(v[0]) for v in elalist],
                       [float(v[1][4]) for v in elalist],
-                      title = "elapased", **plotprefdict)
+                      title = "Execution time",
+                      **plotprefdict)
     seqio = (86. + 20 + 3 + 3) * 1024 + 173
     seqcost = seqio / iospecdict[devname]["seqread"]
     iocostlist = []
@@ -91,8 +98,12 @@ def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png", sli
         iocostlist.append((k, cost))
     gdio = Gnuplot.Data([int(v[0]) for v in iocostlist],
                         [v[1] for v in iocostlist],
-                        title = "iocost", **plotprefdict)
-    gp.plot(gd, gdio)
+                        [int(v[0]) / 4 for v in iocostlist],
+                        title = "Estimated I/O cost",
+                        with_ = 'boxes fs solid border lc rgb "black"')
+                        #with_ = "linespoints lc 2 lt 1 lw 6")
+    #gp("set key right center")
+    gp.plot(gd)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
@@ -118,4 +129,4 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
-    analyzeq(inputdir, dev, "1", terminaltype, False)
+    analyzeq(inputdir, dev, "1", terminaltype)

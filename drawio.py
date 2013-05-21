@@ -47,35 +47,39 @@ class ioprofiler(object):
 def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
     rmbps, wmbps, riops, wiops, ioutil = ioprof
     gp = plotutil.gpinit(terminaltype)
-    gp.xlabel("elapsed time(s)")
+    gp.xlabel("elapsed time[s]")
     gp('set grid')
+    gp('set termoption font "Times-Roman,22"')
 
     # draw mbps graph
     output = "{0}mbps.{1}".format(outprefix, terminaltype)
     gp('set output "{0}"'.format(output))
     gp.ylabel("MBps")
+    gp.ylabel("I/O throughput [MB/s]")
     gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
-                           with_ = "lines", title = "read MBps")
+                           with_ = "lines lw 2", title = "read")
+                           #with_ = "lines", title = "read MBps")
     gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
-                           with_ = "lines", title = "write MBps")
+                           with_ = "lines lw 2 lc 3", title = "write")
+                           #with_ = "lines", title = "write MBps")
     gp.plot(gdrmbps, gdwmbps)
     sys.stdout.write("output {0}\n".format(output))
 
     # draw iops graph
     output = "{0}iops.{1}".format(outprefix, terminaltype)
     gp('set output "{0}"'.format(output))
-    gp.ylabel("iops")
+    gp.ylabel("I/O throughput [IO/s]")
     gdriops = Gnuplot.Data(range(len(riops)), riops,
-                           with_ = "lines", title = "read iops")
+                           with_ = "lines", title = "read")
     gdwiops = Gnuplot.Data(range(len(wiops)), wiops,
-                           with_ = "lines", title = "write iops")
+                           with_ = "lines", title = "write")
     gp.plot(gdriops, gdwiops)
     sys.stdout.write("output {0}\n".format(output))
 
     # draw iosize graph
     output = "{0}iosize.{1}".format(outprefix, terminaltype)
     gp('set output "{0}"'.format(output))
-    gp.ylabel("iosize (KB)")
+    gp.ylabel("iosize [KB]")
     rios = [(rmb * 1000.) / rio if rio != 0 else 0.
             for rmb, rio in zip(rmbps, riops)]
     wios = [(wmb * 1000) / wio if wio != 0 else 0.
