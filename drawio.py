@@ -47,7 +47,7 @@ class ioprofiler(object):
 def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
     rmbps, wmbps, riops, wiops, ioutil = ioprof
     gp = plotutil.gpinit(terminaltype)
-    gp.xlabel("elapsed time[s]")
+    gp.xlabel("elapsed time [s]")
     gp('set grid')
     gp('set termoption font "Times-Roman,22"')
 

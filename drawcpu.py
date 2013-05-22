@@ -18,8 +18,8 @@ def get_cpuprof(fpath, core):
 def plot_cpuprof(coreutil, output, terminaltype = "png"):
     gp = plotutil.gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
-    gp.xlabel("elapsed time(s)")
-    gp.ylabel("util(%)")
+    gp.xlabel("elapsed time [s]")
+    gp.ylabel("util [%]")
     gp('set yrange [0:100]')
     gp('set key outside')
     gp('set grid front')
