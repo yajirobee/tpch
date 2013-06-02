@@ -54,21 +54,23 @@ def proc_tracefile(iotracefile):
             fo.write('\t'.join([str(v) for v in line]) + "\n")
     return sum(iocostprof[0]), sum(iocostprof[1])
 
-def proc_directory_wrapper(devname, corenum):
-    def proc_directory(directory):
-        sys.stdout.write("processing {0}\n".format(directory))
-        match = re.search("workmem(\d+)(k|M|G)B", directory)
-        workmem = proc_suffix(int(match.group(1)), match.group(2))
-        for f in glob.iglob(directory + "/*.res"):
-            exectime = get_exectime(f)
-        for f in glob.iglob(directory + "/*.io"):
-            rsum, wsum = proc_iofile(f, devname)
-        for f in glob.iglob(directory + "/*.cpu"):
-            proc_cpufile(f, corenum)
-        f = max(glob.glob(directory + "/trace_*.log"), key = os.path.getsize)
-        riocostsum, wiocostsum = proc_tracefile(f)
-        return workmem, exectime, rsum, wsum, riocostsum, wiocostsum
-    return proc_directory
+
+def proc_directory(devname, corenum, directory):
+    sys.stdout.write("processing {0}\n".format(directory))
+    match = re.search("workmem(\d+)(k|M|G)B", directory)
+    workmem = proc_suffix(int(match.group(1)), match.group(2))
+    for f in glob.iglob(directory + "/*.res"):
+        exectime = get_exectime(f)
+    for f in glob.iglob(directory + "/*.io"):
+        rsum, wsum = proc_iofile(f, devname)
+    for f in glob.iglob(directory + "/*.cpu"):
+        proc_cpufile(f, corenum)
+    f = max(glob.glob(directory + "/trace_*.log"), key = os.path.getsize)
+    riocostsum, wiocostsum = proc_tracefile(f)
+    return workmem, exectime[4], rsum, wsum, riocostsum, wiocostsum
+
+def multiprocessing_helper(args):
+    return args[0](*args[1:])
 
 def main(rootdir, devname, corenum):
     conn = sqlite3.connect(rootdir + "/spec.db")
@@ -76,7 +78,7 @@ def main(rootdir, devname, corenum):
     pool = multiprocessing.Pool(ncore)
     dirs = []
     for d in glob.iglob(rootdir + "/workmem*"):
-        dirs.extend(glob.glob(d + "[0-9]*"))
+        dirs.extend(glob.glob(d + "/[0-9]*"))
 
     tblname = "execspec"
     columns = ("workmem integer",
@@ -87,8 +89,8 @@ def main(rootdir, devname, corenum):
                "writeiocost real")
     conn.execute("create table {0} ({1})".format(tblname, ','.join(columns)))
 
-    for vals in pool.map(
-        proc_directory_wrapper(devname, corenum), dirs):
+    argslist = [(proc_directory, d, devname, corename) for d in dirs]
+    for vals in pool.map(multiprocessing_helper, argslist):
         conn.execute(("insert into {0} values ({1})"
                       .format(tblname, ','.join('?' * len(columns)))),
                      vals)
