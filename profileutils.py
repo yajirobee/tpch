@@ -36,14 +36,14 @@ def get_normioprof(fpath, devname):
     return rmbps, wmbps, riops, wiops, ioutil
 
 def get_ioprof(fpath, devname):
-    "get histgram describing IO profile"
+    "get histgram of IO profile"
     if devname == "md0":
         return get_mdioprof(fpath, devname)
     else:
         return get_normioprof(fpath, devname)
 
 def get_cpuprof(fpath, core):
-    "get histgram describing a CPU core usage"
+    "get histgram of a CPU core usage"
     coreutil = []
     for line in open(fpath):
         val = line.split()
@@ -54,7 +54,7 @@ def get_cpuprof(fpath, core):
     return coreutil
 
 def get_allcpuprof(fpath, col):
-    "get histgram describing one column of all CPU cores usage"
+    "get histgram of one column of all CPU cores usage"
     datepat = re.compile(r"\d{2}:\d{2}:\d{2}")
     floatpat = re.compile(r"\d+(?:\.\d*)?|\.\d+")
     utilhist = []
@@ -87,6 +87,7 @@ def get_reliddict(relidfile):
     return reliddict
 
 def get_tblrefprof(iodumpfile):
+    "get histgram of each table reference counts"
     refhist = []
     with open(iodumpfile) as fo:
         line = fo.readline()
@@ -111,3 +112,50 @@ def get_tblrefprof(iodumpfile):
                 refdict[int(vals[5], 16)] = 1
                 elapsed = time
     return refhist
+
+def get_iocostprof(fpath):
+    readiohist = [0]
+    writeiohist = [0]
+    interval = 10 ** 9
+    prevstate = None
+    for i, line in enumerate(open(fpath)):
+        val = line.strip().split()
+        if not val:
+            continue
+        if 'r' == val[1]:
+            if 'r' == prevstate:
+                sys.stderr.write("bat IO sequence : line {0}\n".format(i))
+                sys.exit(1)
+            stime = int(val[0], 16)
+            for i in range(stime / interval - (len(readiohist) - 1)):
+                readiohist.append(0)
+        elif 'R' == val[1]:
+            if ('r' != prevstate) or (int(val[3], 16) != prevblock):
+                sys.stderr.write("bat IO sequence : line {0}\n".format(i))
+                sys.exit(1)
+            ftime = int(val[0], 16)
+            while stime / interval < ftime / interval:
+                readiohist[-1] += len(readiohist) * interval - stime
+                stime = len(readiohist) * interval
+                readiohist.append(0)
+            readiohist[-1] += ftime - stime
+        elif 'w' == val[1]:
+            if 'w' == prevstate:
+                sys.stderr.write("bat IO sequence : line {0}\n".format(i))
+                sys.exit(1)
+            stime = int(val[0], 16)
+            for i in range(stime / interval - (len(writeiohist) - 1)):
+                writeiohist.append(0)
+        elif 'W' == val[1]:
+            if ('w' != prevstate) or (int(val[3], 16) != prevblock):
+                sys.stderr.write("bat IO sequence : line {0}\n".format(i))
+                sys.exit(1)
+            ftime = int(val[0], 16)
+            while stime / interval < ftime / interval:
+                writeiohist[-1] += len(writeiohist) * interval - stime
+                stime = len(writeiohist) * interval
+                writeiohist.append(0)
+            writeiohist[-1] += ftime - stime
+        prevstate = val[1]
+        prevblock = int(val[3], 16)
+    return readiohist, writeiohist

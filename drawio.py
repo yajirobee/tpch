@@ -4,24 +4,32 @@ import sys, os, re, Gnuplot
 import plotutil
 from profileutils import get_ioprof
 
+slide = False
+
 def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
     rmbps, wmbps, riops, wiops, ioutil = ioprof
     gp = plotutil.gpinit(terminaltype)
     gp.xlabel("elapsed time [s]")
     gp('set grid')
-    gp('set termoption font "Times-Roman,22"')
+    if slide:
+        gp('set termoption font "Times-Roman,22"')
 
     # draw mbps graph
     output = "{0}mbps.{1}".format(outprefix, terminaltype)
     gp('set output "{0}"'.format(output))
     gp.ylabel("MBps")
     gp.ylabel("I/O throughput [MB/s]")
-    gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
-                           with_ = "lines lw 2", title = "read")
+    if slide:
+        gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
+                               with_ = "lines lw 2", title = "read")
                            #with_ = "lines", title = "read MBps")
-    gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
-                           with_ = "lines lw 2 lc 3", title = "write")
-                           #with_ = "lines", title = "write MBps")
+        gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
+                               with_ = "lines lw 2 lc 3", title = "write")
+    else:
+        gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
+                               with_ = "lines", title = "read")
+        gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
+                               with_ = "lines", title = "write")
     gp.plot(gdrmbps, gdwmbps)
     sys.stdout.write("output {0}\n".format(output))
 
