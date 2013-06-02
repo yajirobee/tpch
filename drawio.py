@@ -2,47 +2,7 @@
 
 import sys, os, re, Gnuplot
 import plotutil
-
-class ioprofiler(object):
-    def __init__(self, devname):
-        self.devname = devname
-        if devname == "md0":
-            self.get_ioprof = self.get_mdioprof
-        else:
-            self.get_ioprof = self.get_normioprof
-
-    def get_mdioprof(self, fpath):
-        rmbps, wmbps, riops, wiops, ioutil = [], [], [], [], []
-        tmp = []
-        comppat = re.compile(r'fio[a-h]')
-        for line in open(fpath):
-            val = line.split()
-            if not val:
-                if tmp:
-                    ioutil.append(sum(tmp) / len(tmp))
-                    tmp = []
-            elif val[0] == self.devname:
-                riops.append(float(val[3]))
-                wiops.append(float(val[4]))
-                rmbps.append(float(val[5]) * 512 * (10 ** -6)) # 5th column is rsec/s
-                wmbps.append(float(val[6]) * 512 * (10 ** -6)) # 6th column is wsec/s
-            elif comppat.match(val[0]):
-                tmp.append(float(val[11]))
-        return rmbps, wmbps, riops, wiops, ioutil
-
-    def get_normioprof(self, fpath):
-        rmbps, wmbps, riops, wiops, ioutil = [], [], [], [], []
-        for line in open(fpath):
-            val = line.split()
-            if not val:
-                continue
-            elif val[0] == self.devname:
-                riops.append(float(val[3]))
-                wiops.append(float(val[4]))
-                rmbps.append(float(val[5]) * 512 * (10 ** -6)) # 5th column is rsec/s
-                wmbps.append(float(val[6]) * 512 * (10 ** -6)) # 6th column is wsec/s
-                ioutil.append(float(val[11]))
-        return rmbps, wmbps, riops, wiops, ioutil
+from profileutils import get_ioprof
 
 def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
     rmbps, wmbps, riops, wiops, ioutil = ioprof
@@ -111,8 +71,7 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
-    ioprofiler = ioprofiler(devname)
-    ioprof = ioprofiler.get_ioprof(iofile)
+    ioprof = get_ioprof(iofile, devname)
     outprefix = iofile.rsplit('.', 1)[0]
 
     plot_ioprof(ioprof, outprefix, terminaltype)
