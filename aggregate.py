@@ -31,46 +31,46 @@ def get_exectime(resfile):
                 i += 1
     return None
 
-def proc_iofile(iofile, devname, terminaltype = None):
+def proc_iofile(iofile, devname):
     ioprof = get_ioprof(iofile, devname)
-    if terminaltype:
-        outprefix = iofile.rsplit('.', 1)[0]
-        outprefix += os.path.basename(os.path.dirname(os.path.dirname(iofile)))
-        drawio.plot_ioprof(ioprof, outprefix, terminaltype)
+    output = "{0}.iohist".format(iofile.rsplit('.', 1)[0])
+    with open(output, "w") as fo:
+        for line in zip(*ioprof):
+            fo.write('\t'.join([str(v) for v in line]) + "\n")
     return sum(ioprof[0]), sum(ioprof[1])
 
-def proc_cpufile(cpufile, corenum, terminaltype = None):
+def proc_cpufile(cpufile, corenum):
     cpuprof = get_cpuprof(cpufile, corenum)
-    if terminaltype:
-        output = cpufile.rsplit('.', 1)[0]
-        output += os.path.basename(os.path.dirname(os.path.dirname(cpufile)))
-        output += "core" + corenum + "." + terminaltype
-        drawcpu.plot_cpuprof(cpuprof, output, terminaltype)
+    output = "{0}_core{1}.cpuhist".format(cpufile.rsplit('.', 1)[0], corenum)
+    with open(output, "w") as fo:
+        for line in cpuprof:
+            fo.write('\t'.join([str(v) for v in line]) + "\n")
 
-def proc_tracefile(iotracefile, terminaltype = None):
-    iocosthists = get_iocostprof(iotracefile)
-    if terminaltype:
-        fprefix = iotracefile.rsplist('.', 1)[0]
-        output = "{0}iocosthist.{1}".format(fprefix, terminaltype)
-        drawiocost.plot_iocostprof(iocosthists, output, terminaltype)
-    return sum(iocosthists[0]), sum(iocosthists[1])
+def proc_tracefile(iotracefile):
+    iocostprof = get_iocostprof(iotracefile)
+    output = "{0}.iocosthist".format(iotracefile.rsplit('.', 1)[0])
+    with open(output, "w") as fo:
+        for line in zip(*iocostprof):
+            fo.write('\t'.join([str(v) for v in line]) + "\n")
+    return sum(iocostprof[0]), sum(iocostprof[1])
 
-def proc_directory_wrapper(devname, corenum, terminaltype):
+def proc_directory_wrapper(devname, corenum):
     def proc_directory(directory):
+        sys.stdout.write("processing {0}\n".format(directory))
         match = re.search("workmem(\d+)(k|M|G)B", directory)
         workmem = proc_suffix(int(match.group(1)), match.group(2))
         for f in glob.iglob(directory + "/*.res"):
             exectime = get_exectime(f)
         for f in glob.iglob(directory + "/*.io"):
-            rsum, wsum = proc_iofile(f, devname, terminaltype)
+            rsum, wsum = proc_iofile(f, devname)
         for f in glob.iglob(directory + "/*.cpu"):
-            proc_cpufile(f, corenum, terminaltype)
+            proc_cpufile(f, corenum)
         f = max(glob.glob(directory + "/trace_*.log"), key = os.path.getsize)
-        riocostsum, wiocostsum = proc_tracefile(f, terminaltype)
+        riocostsum, wiocostsum = proc_tracefile(f)
         return workmem, exectime, rsum, wsum, riocostsum, wiocostsum
     return proc_directory
 
-def main(rootdir, devname, corenum, terminaltype):
+def main(rootdir, devname, corenum):
     conn = sqlite3.connect(rootdir + "/spec.db")
     ncore = multiprocessing.cpu_count()
     pool = multiprocessing.Pool(ncore)
@@ -88,26 +88,21 @@ def main(rootdir, devname, corenum, terminaltype):
     conn.execute("create table {0} ({1})".format(tblname, ','.join(columns)))
 
     for vals in pool.map(
-        proc_directory_wrapper(devname, corenum, terminaltype), dirs):
+        proc_directory_wrapper(devname, corenum), dirs):
         conn.execute(("insert into {0} values ({1})"
                       .format(tblname, ','.join('?' * len(columns)))),
                      vals)
-        self.conn.commit()
+        conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
     if len(sys.argv) == 4:
         rootdir = sys.argv[1]
         devname = sys.argv[2]
         corenum = sys.argv[3]
-        terminaltype = "png"
-    elif len(sys.argv) == 5:
-        rootdir = sys.argv[1]
-        devname = sys.argv[2]
-        corenum = sys.argv[3]
-        terminaltype = sys.argv[4]
     else:
         sys.stderr.write(
-            "Usage : {0} rootdir devname corenum [png|eps]\n".format(sys.argv[0]))
+            "Usage : {0} rootdir devname corenum\n".format(sys.argv[0]))
         sys.exit(0)
 
-    main(rootdir, devname, corenum, terminaltype)
+    main(rootdir, devname, corenum)
