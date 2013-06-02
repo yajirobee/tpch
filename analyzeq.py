@@ -103,7 +103,7 @@ def analyzeq(inputdir, devname = "md0", corenum = "1", terminaltype = "png"):
                         with_ = 'boxes fs solid border lc rgb "black"')
                         #with_ = "linespoints lc 2 lt 1 lw 6")
     #gp("set key right center")
-    gp.plot(gd)
+    gp.plot(gd, gdio)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 

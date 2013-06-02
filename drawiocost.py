@@ -62,7 +62,7 @@ if __name__ == "__main__":
         iotracefile = sys.argv[1]
         terminaltype = sys.argv[2]
     else:
-        sys.stdout.write("Usage : {0} iotracefile\n".format(sys.argv[0]))
+        sys.stdout.write("Usage : {0} iotracefile [png|eps]\n".format(sys.argv[0]))
         sys.exit(0)
 
     main(iotracefile, terminaltype)
