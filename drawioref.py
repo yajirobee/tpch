@@ -5,7 +5,7 @@ import plotutil
 from profileutils import get_reliddict, get_tblrefprof
 
 def plot_tblrefhist(reliddict, refhist, output, terminaltype = "png"):
-    rellist = []
+    rellist = [0]
     for d in refhist:
         for k in d:
             if k not in rellist and k > 3000:

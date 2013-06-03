@@ -3,3 +3,4 @@
 *.log
 *.dvi
 *.synctex.gz
+/data

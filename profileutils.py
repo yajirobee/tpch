@@ -77,7 +77,7 @@ def get_allcpuprof(fpath, col):
 
 def get_reliddict(relidfile):
     "get relid dictionary"
-    reliddict = {}
+    reliddict = {0 : "temporary"}
     for line in open(relidfile):
         vals = [v.strip() for v in line.split('|')]
         if len(vals) != 2 or not vals[0].isdigit():

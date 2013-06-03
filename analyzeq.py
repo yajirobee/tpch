@@ -51,15 +51,19 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
                     for i, v in enumerate(line.strip().split()):
                         iocostprof[i].append(float(v))
                 output = "{0}iocosthist.{1}".format(outprefix, terminaltype)
-                drawiocost.plot_iocostprof(iocostprof[:2], output, terminaltype)
+                drawiocost.plot_iocostprof((iocostprof[1], iocostprof[3]),
+                                           output, terminaltype)
             if reliddict:
                 for f in glob.iglob(dd + "/trace_*.iorefhist"):
                     iorefhist = []
                     for line in open(f):
                         dic = {}
-                        for word in line.strip().split(','):
-                            k, v = word.split(':', 1)
-                            dic[int(k)] = int(v)
+                        line = line.strip()
+                        if line:
+                            for word in line.split(','):
+                                k, v = word.split(':', 1)
+                                dic[int(k)] = int(v)
+                        iorefhist.append(dic)
                     output = "{0}iorefhist.{1}".format(outprefix, terminaltype)
                     drawioref.plot_tblrefhist(reliddict, iorefhist, output, terminaltype)
 
@@ -123,6 +127,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reliddict = get_reliddict(relidfile) if relidfile else None
-    #gen_allgraph(rootdir, reliddict, terminaltype)
+    gen_allgraph(rootdir, reliddict, terminaltype)
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     plot_workmem_exectime(rootdir + "/spec.db", output, terminaltype)
