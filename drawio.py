@@ -7,29 +7,31 @@ from profileutils import get_ioprof
 slide = False
 
 def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
-    rmbps, wmbps, riops, wiops, ioutil = ioprof
+    riops, wiops, rmbps, wmbps, riosize, wiosize = [[] for i in range(6)]
+    t = len(ioprof)
+    for vals in ioprof:
+        riops.append(vals[2])
+        wiops.append(vals[3])
+        rmbps.append(vals[4])
+        wmbps.append(vals[5])
+        riosize.append((vals[4] * 1000.) / vals[2] if vals[2] != 0 else 0.)
+        wiosize.append((vals[5] * 1000.) / vals[3] if vals[3] != 0 else 0.)
     gp = plotutil.gpinit(terminaltype)
     gp.xlabel("elapsed time [s]")
     gp('set grid')
     if slide:
         gp('set termoption font "Times-Roman,22"')
+        plotprefdict = {"with_" : "lines lw 2"}
+    else:
+        plotprefdict = {"with_" : "lines"}
 
     # draw mbps graph
     output = "{0}mbps.{1}".format(outprefix, terminaltype)
     gp('set output "{0}"'.format(output))
     gp.ylabel("MBps")
     gp.ylabel("I/O throughput [MB/s]")
-    if slide:
-        gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
-                               with_ = "lines lw 2", title = "read")
-                           #with_ = "lines", title = "read MBps")
-        gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
-                               with_ = "lines lw 2 lc 3", title = "write")
-    else:
-        gdrmbps = Gnuplot.Data(range(len(rmbps)), rmbps,
-                               with_ = "lines", title = "read")
-        gdwmbps = Gnuplot.Data(range(len(wmbps)), wmbps,
-                               with_ = "lines", title = "write")
+    gdrmbps = Gnuplot.Data(range(t), rmbps, title = "Read", **plotprefdict)
+    gdwmbps = Gnuplot.Data(range(t), wmbps, title = "Write", **plotprefdict)
     gp.plot(gdrmbps, gdwmbps)
     sys.stdout.write("output {0}\n".format(output))
 
@@ -37,25 +39,17 @@ def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
     output = "{0}iops.{1}".format(outprefix, terminaltype)
     gp('set output "{0}"'.format(output))
     gp.ylabel("I/O throughput [IO/s]")
-    gdriops = Gnuplot.Data(range(len(riops)), riops,
-                           with_ = "lines", title = "read")
-    gdwiops = Gnuplot.Data(range(len(wiops)), wiops,
-                           with_ = "lines", title = "write")
+    gdriops = Gnuplot.Data(range(t), riops, title = "Read", **plotprefdict)
+    gdwiops = Gnuplot.Data(range(t), wiops, title = "Write", **plotprefdict)
     gp.plot(gdriops, gdwiops)
     sys.stdout.write("output {0}\n".format(output))
 
     # draw iosize graph
     output = "{0}iosize.{1}".format(outprefix, terminaltype)
     gp('set output "{0}"'.format(output))
-    gp.ylabel("iosize [KB]")
-    rios = [(rmb * 1000.) / rio if rio != 0 else 0.
-            for rmb, rio in zip(rmbps, riops)]
-    wios = [(wmb * 1000) / wio if wio != 0 else 0.
-            for wmb, wio in zip(wmbps, wiops)]
-    gdrios = Gnuplot.Data(range(len(rios)), rios,
-                          with_ = "lines", title = "read iosize")
-    gdwios = Gnuplot.Data(range(len(wios)), wios,
-                          with_ = "lines", title = "write iosize")
+    gp.ylabel("I/O size [KB]")
+    gdrios = Gnuplot.Data(range(t), riosize, title = "Read", **plotprefdict)
+    gdwios = Gnuplot.Data(range(t), wiosize, title = "Write", **plotprefdict)
     gp.plot(gdrios, gdwios)
     sys.stdout.write("output {0}\n".format(output))
 

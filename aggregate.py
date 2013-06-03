@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import sys, os, glob, re, multiprocessing, sqlite3
+import numpy as np
 import drawio, drawcpu
 from profileutils import get_ioprof, get_cpuprof, get_iocostprof
 
@@ -35,9 +36,16 @@ def proc_iofile(iofile, devname):
     ioprof = get_ioprof(iofile, devname)
     output = "{0}.iohist".format(iofile.rsplit('.', 1)[0])
     with open(output, "w") as fo:
-        for line in zip(*ioprof):
+        for line in ioprof:
             fo.write('\t'.join([str(v) for v in line]) + "\n")
-    return sum(ioprof[0]), sum(ioprof[1])
+    ave = None
+    if ioprof:
+        ave = np.array(ioprof[0])
+        for arr in ioprof[1:]:
+            ave += arr
+        ave /= len(ioprof)
+        ave = ave.tolist()
+    return ave
 
 def proc_cpufile(cpufile, corenum):
     cpuprof = get_cpuprof(cpufile, corenum)
@@ -45,32 +53,56 @@ def proc_cpufile(cpufile, corenum):
     with open(output, "w") as fo:
         for line in cpuprof:
             fo.write('\t'.join([str(v) for v in line]) + "\n")
+    ave = None
+    if cpuprof:
+        ave = np.array(cpuprof[0])
+        for arr in cpuprof[1:]:
+            ave += arr
+        ave /= len(cpuprof)
+        ave = ave.tolist()
+    return ave
 
 def proc_tracefile(iotracefile):
     iocostprof = get_iocostprof(iotracefile)
-    output = "{0}.iocosthist".format(iotracefile.rsplit('.', 1)[0])
-    with open(output, "w") as fo:
-        for line in zip(*iocostprof[:-1]):
-            fo.write('\t'.join([str(v) for v in line]) + "\n")
-    output = "{0}.iorefhist".format(iotracefile.rsplit('.', 1)[0])
-    with open(output, "w") as fo:
-        for dic in iocostprof[-1]:
-            fo.write(','.join(["{0}:{1}".format(k, v) for k, v in dic.items()]) + "\n")
-    return tuple([sum(col) for col in iocostprof[:-1]])
+    statoutput = "{0}.iocosthist".format(iotracefile.rsplit('.', 1)[0])
+    refoutput = "{0}.iorefhist".format(iotracefile.rsplit('.', 1)[0])
+    fs = open(statoutput, "w")
+    fr = open(refoutput, "w")
+    for line in iocostprof:
+        fs.write('\t'.join([str(v) for v in line[:-1]]) + "\n")
+        fr.write(','.join(["{0}:{1}".format(k, v) for k, v in line[-1]]) + "\n")
+    fs.close()
+    fr.close()
+    ave = None
+    if iocostprof:
+        ave = np.array(iocostprof[0][:-1])
+        for arr in iocostprof[1:]:
+            ave += arr[:-1]
+        ave /= len(iocostprof)
+        ave = ave.tolist()
+    return ave
 
 def proc_directory(directory, devname, corenum):
     sys.stdout.write("processing {0}\n".format(directory))
     match = re.search("workmem(\d+)(k|M|G)B", directory)
     workmem = proc_suffix(int(match.group(1)), match.group(2))
-    for f in glob.iglob(directory + "/*.res"):
-        exectime = get_exectime(f)
+    sumio, sumcpu, sumiocost = None, None, None
+    dirs = glob.glob(directory + "/*.time")
+    if dirs:
+        for f in dirs:
+            exectime = [float(v) for v in open(f).readline().strip().split()]
+    else:
+        for f in glob.iglob(directory + "/*.res"):
+            exectime = get_exectime(f)
     for f in glob.iglob(directory + "/*.io"):
-        rsum, wsum = proc_iofile(f, devname)
+        sumio = proc_iofile(f, devname)
     for f in glob.iglob(directory + "/*.cpu"):
-        proc_cpufile(f, corenum)
-    f = max(glob.glob(directory + "/trace_*.log"), key = os.path.getsize)
-    riocount, riocost, wiocount, wiocost = proc_tracefile(f)
-    return workmem, exectime[4], rsum, wsum, riocount, wiocount, riocost, wiocost
+        sumcpu = proc_cpufile(f, corenum)
+    dirs = glob.glob(directory + "/trace_*.log")
+    if dirs:
+        f = max(dirs, key = os.path.getsize)
+        sumiocost = proc_tracefile(f)
+    return workmem, exectime[4], sumio, sumcpu, sumiocost
 
 def multiprocessing_helper(args):
     return args[0](*args[1:])
@@ -85,20 +117,62 @@ def main(rootdir, devname, corenum):
     res = pool.map(multiprocessing_helper, argslist)
 
     conn = sqlite3.connect(rootdir + "/spec.db")
-    tblname = "execspec"
-    columns = ("workmem integer",
-               "exectime real",
-               "readio integer",
-               "writeio integer",
-               "readiocount integer",
-               "writeiocount integer",
-               "readiocost real",
-               "writeiocost real")
-    conn.execute("create table {0} ({1})".format(tblname, ','.join(columns)))
-    for vals in res:
-        conn.execute(("insert into {0} values ({1})"
-                      .format(tblname, ','.join('?' * len(columns)))),
-                     vals)
+    maintbl = "measurement"
+    maincols = ("id integer",
+                "workmem integer",
+                "exectime real")
+    iostattbl = "io"
+    iostatcols = ("id integer",
+                  "rrpm_per_sec real",
+                  "wrpm_per_sec real",
+                  "rio_per_sec real",
+                  "wio_per_sec real",
+                  "rmb_per_sec real",
+                  "wmbc_per_sec real",
+                  "request_size real",
+                  "queue_length real",
+                  "wait_msec real",
+                  "util real")
+    cputbl = "cpu"
+    cpucols = ("id integer",
+               "usr real",
+               "nice real",
+               "sys real",
+               "iowait real",
+               "irq real",
+               "soft real",
+               "steal real",
+               "guest real",
+               "idle real")
+    iotracetbl = "iotrace"
+    iotracecols = ("id integer",
+                   "readio_count integer",
+                   "writeio_count integer",
+                   "readio_nsec real",
+                   "writeio_nsec real")
+    tbldict = {maintbl : maincols,
+               iostattbl : iostatcols,
+               cputbl : cpucols,
+               iotracetbl : iotracecols}
+    for k, v in tbldict.items():
+        conn.execute("create table {0} ({1})".format(k, ','.join(v)))
+    for i, vals in enumerate(res):
+        query = "insert into {0} values ({1})"
+        conn.execute(query.format(maintbl, ','.join('?' * len(maintbl))),
+                     (i, vals[0], vals[1]))
+        if vals[2]:
+            vals[2].pop(9) # remove svctm column
+            vals[2].insert(0, i)
+            conn.execute(query.format(iostattbl, ','.join('?' * len(iostatcols))),
+                         vals[2])
+        if vals[3]:
+            vals[3].insert(0, i)
+            conn.execute(query.format(cputbl, ','.join('?' * len(cpucols))),
+                         vals[3])
+        if vals[4]:
+            vals[4].insert(0, i)
+            conn.execute(query.format(iotracetbl, ','.join('?' * len(iotracecols))),
+                         vals[4])
         conn.commit()
     conn.close()
 

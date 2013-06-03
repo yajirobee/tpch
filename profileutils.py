@@ -1,39 +1,48 @@
 #! /usr/bin/env python
 
 import sys, os, re
+import numpy as np
 
 def get_mdioprof(fpath, devname):
-    rmbps, wmbps, riops, wiops, ioutil = [], [], [], [], []
-    tmp = []
+    ioprof = []
     comppat = re.compile(r'fio[a-h]')
+    tmp = None
+    comp = []
     for line in open(fpath):
         val = line.split()
         if not val:
             if tmp:
-                ioutil.append(sum(tmp) / len(tmp))
-                tmp = []
+                if comp:
+                    ave = comp[0]
+                    for arr in comp[1:]:
+                        ave += arr
+                    for i in range(6, ave.size):
+                        ave[i] /= len(comp)
+                    tmp[:2] = ave[:2]
+                    tmp[6:] = ave[6:]
+                    comp = []
+                tmp[4] *= 512 * (10 ** -6) # convert read throughput from sec/s to MB/s
+                tmp[5] *= 512 * (10 ** -6) # convert write throughput from sec/s to MB/s
+                ioprof.append(tmp)
+                tmp = None
         elif val[0] == devname:
-            riops.append(float(val[3]))
-            wiops.append(float(val[4]))
-            rmbps.append(float(val[5]) * 512 * (10 ** -6)) # 5th column is rsec/s
-            wmbps.append(float(val[6]) * 512 * (10 ** -6)) # 6th column is wsec/s
+            tmp = [float(v) for v in val[1:]]
         elif comppat.match(val[0]):
-            tmp.append(float(val[11]))
-    return rmbps, wmbps, riops, wiops, ioutil
+            comp.append(np.array([float(v) for v in val[1:]]))
+    return ioprof
 
 def get_normioprof(fpath, devname):
-    rmbps, wmbps, riops, wiops, ioutil = [], [], [], [], []
+    ioprof = []
     for line in open(fpath):
         val = line.split()
         if not val:
             continue
         elif val[0] == devname:
-            riops.append(float(val[3]))
-            wiops.append(float(val[4]))
-            rmbps.append(float(val[5]) * 512 * (10 ** -6)) # 5th column is rsec/s
-            wmbps.append(float(val[6]) * 512 * (10 ** -6)) # 6th column is wsec/s
-            ioutil.append(float(val[11]))
-    return rmbps, wmbps, riops, wiops, ioutil
+            tmp = [float(v) for v in val[1:]]
+            tmp[4] *= 512 * (10 ** -6) # convert read throughput from sec/s to MB/s
+            tmp[5] *= 512 * (10 ** -6) # convert write throughput from sec/s to MB/s
+            ioprof.append(tmp)
+    return ioprof
 
 def get_ioprof(fpath, devname):
     "get histgram of IO profile"
@@ -44,14 +53,14 @@ def get_ioprof(fpath, devname):
 
 def get_cpuprof(fpath, core):
     "get histgram of a CPU core usage"
-    coreutil = []
+    cpuprof = []
     for line in open(fpath):
         val = line.split()
         if not val:
             continue
         elif val[1] == core:
-            coreutil.append([float(v) for v in val[2:]])
-    return coreutil
+            cpuprof.append([float(v) for v in val[2:]])
+    return cpuprof
 
 def get_allcpuprof(fpath, col):
     "get histgram of one column of all CPU cores usage"
@@ -114,8 +123,8 @@ def get_tblrefprof(iodumpfile):
     return refhist
 
 def get_iocostprof(fpath):
-    readiocount, readiotime, writeiocount, writeiotime, readioref = range(5)
-    iohist = ([0], [0], [0], [0], [{}])
+    readiocount, writeiocount, readiotime, writeiotime, readioref = range(5)
+    iohist = [[0, 0, 0, 0, {}]]
     interval = 10 ** 9
     prevstate = None
     for line in open(fpath):
@@ -127,17 +136,15 @@ def get_iocostprof(fpath):
                 sys.stderr.write("bat IO sequence : line {0}\n".format(i))
                 sys.exit(1)
             stime = int(val[0], 16)
-            for i in range(stime / interval - (len(iohist[0]) - 1)):
-                for j in range(4):
-                    iohist[j].append(0)
-                iohist[readioref].append({})
+            for i in range(stime / interval - (len(iohist) - 1)):
+                iohist.append([0, 0, 0, 0, {}])
             idx = readiocount if 'r' == val[1] else writeiocount
-            iohist[idx][-1] += 1
+            iohist[-1][idx] += 1
             if 'r' == val[1]:
-                if int(val[2], 16) in iohist[readioref][-1]:
-                    iohist[readioref][-1][int(val[2], 16)] += 1
+                if int(val[2], 16) in iohist[-1][readioref]:
+                    iohist[-1][readioref][int(val[2], 16)] += 1
                 else:
-                    iohist[readioref][-1][int(val[2], 16)] = 1
+                    iohist[-1][readioref][int(val[2], 16)] = 1
         elif 'R' == val[1] or 'W' == val[1]:
             if (val[1].lower() != prevstate) or (int(val[3], 16) != prevblock):
                 sys.stderr.write("bat IO sequence : line {0}\n".format(i))
@@ -145,12 +152,10 @@ def get_iocostprof(fpath):
             ftime = int(val[0], 16)
             idx = readiotime if 'R' == val[1] else writeiotime
             while stime / interval < ftime / interval:
-                iohist[idx][-1] += len(iohist[0]) * interval - stime
-                stime = len(iohist[0]) * interval
-                for j in range(4):
-                    iohist[j].append(0)
-                iohist[readioref].append({})
-            iohist[idx][-1] += ftime - stime
+                iohist[-1][idx] += len(iohist) * interval - stime
+                stime = len(iohist) * interval
+                iohist.append([0, 0, 0, 0, {}])
+            iohist[-1][idx] += ftime - stime
         prevstate = val[1]
         prevblock = int(val[3], 16)
     return iohist

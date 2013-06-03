@@ -33,10 +33,9 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
             for f in glob.iglob(dd + "/*.res"):
                 outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
             for f in glob.iglob(dd + "/*.iohist"):
-                ioprof = ([], [], [], [], [])
+                ioprof = []
                 for line in open(f):
-                    for i, v in enumerate(line.strip().split()):
-                        ioprof[i].append(float(v))
+                    ioprof.append([float(v) for v in line.strip().split()])
                 drawio.plot_ioprof(ioprof, outprefix, terminaltype)
             for f in glob.iglob(dd + "/*.cpuhist"):
                 cpuprof = []
@@ -46,13 +45,11 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
                 output += "." + terminaltype
                 drawcpu.plot_cpuprof(cpuprof, output, terminaltype)
             for f in glob.iglob(dd + "/trace_*.iocosthist"):
-                iocostprof = tuple([[] for i in range(4)])
+                iocostprof = []
                 for line in open(f):
-                    for i, v in enumerate(line.strip().split()):
-                        iocostprof[i].append(float(v))
+                    iocostprof.append([float(v) for v in line.strip().split()])
                 output = "{0}iocosthist.{1}".format(outprefix, terminaltype)
-                drawiocost.plot_iocostprof((iocostprof[1], iocostprof[3]),
-                                           output, terminaltype)
+                drawiocost.plot_iocostprof(iocostprof, output, terminaltype)
             if reliddict:
                 for f in glob.iglob(dd + "/trace_*.iorefhist"):
                     iorefhist = []
@@ -188,7 +185,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reliddict = get_reliddict(relidfile) if relidfile else None
-    #gen_allgraph(rootdir, reliddict, terminaltype)
+    gen_allgraph(rootdir, reliddict, terminaltype)
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     plot_workmem_exectime(rootdir + "/spec.db", output, terminaltype)
     output = "{0}/io.{1}".format(rootdir, terminaltype)
