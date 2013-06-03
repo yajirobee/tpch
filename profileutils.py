@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import sys, os, glob, re
+import sys, os, re
 
 def get_mdioprof(fpath, devname):
     rmbps, wmbps, riops, wiops, ioutil = [], [], [], [], []
