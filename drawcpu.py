@@ -2,18 +2,9 @@
 
 import sys, os, re, Gnuplot
 import plotutil
+from profileutils import get_cpuprof
 
 keys = ("usr", "nice", "sys", "iowait", "irq", "soft", "steal", "guest", "idle")
-
-def get_cpuprof(fpath, core):
-    coreutil = []
-    for line in open(fpath):
-        val = line.split()
-        if not val:
-            continue
-        elif val[1] == core:
-            coreutil.append([float(v) for v in val[2:]])
-    return coreutil
 
 def plot_cpuprof(coreutil, output, terminaltype = "png"):
     gp = plotutil.gpinit(terminaltype)
