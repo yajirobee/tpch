@@ -6,7 +6,7 @@ from profileutils import get_cpuprof
 
 keys = ("usr", "nice", "sys", "iowait", "irq", "soft", "steal", "guest", "idle")
 
-def plot_cpuprof(coreutil, output, terminaltype = "png"):
+def plot_cpuprof(cpuprof, output, terminaltype = "png"):
     gp = plotutil.gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
     gp.xlabel("elapsed time [s]")
@@ -16,9 +16,9 @@ def plot_cpuprof(coreutil, output, terminaltype = "png"):
     gp('set grid front')
     gp('set style fill pattern 1 border')
     gd = []
-    xlen = len(coreutil)
+    xlen = len(cpuprof)
     piledatas = [[] for i in range(len(keys))]
-    for vals in coreutil:
+    for vals in cpuprof:
         piledatas[0].append(vals[0])
         for i in range(1, len(keys)):
             piledatas[i].append(piledatas[i - 1][-1] + vals[i])
@@ -50,8 +50,8 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
-    coreutil = get_cpuprof(cpufile, core)
+    cpuprof = get_cpuprof(cpufile, core)
 
     fprefix = cpufile.rsplit('.', 1)[0]
     output = "{0}core{1}.{2}".format(fprefix, core, terminaltype)
-    plot_cpuprof(coreutil, output, terminaltype)
+    plot_cpuprof(cpuprof, output, terminaltype)

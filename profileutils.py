@@ -114,6 +114,8 @@ def get_tblrefprof(iodumpfile):
     return refhist
 
 def get_iocostprof(fpath):
+    readiocount, readiotime, writeiocount, writeiotime = range(4)
+    iohist = tuple([[0] for i in range(4)])
     readiohist = [0]
     writeiohist = [0]
     interval = 10 ** 9
@@ -122,40 +124,28 @@ def get_iocostprof(fpath):
         val = line.strip().split()
         if not val:
             continue
-        if 'r' == val[1]:
-            if 'r' == prevstate:
+        if 'r' == val[1] or 'w' == val[1]:
+            if val[1] == prevstate:
                 sys.stderr.write("bat IO sequence : line {0}\n".format(i))
                 sys.exit(1)
             stime = int(val[0], 16)
-            for i in range(stime / interval - (len(readiohist) - 1)):
-                readiohist.append(0)
-        elif 'R' == val[1]:
-            if ('r' != prevstate) or (int(val[3], 16) != prevblock):
+            for i in range(stime / interval - (len(iohist) - 1)):
+                for j in range(4):
+                    iohist[j].append(0)
+            idx = readiocount if 'r' == val[1] else writeiocount
+            iohist[idx][-1] += 1
+        elif 'R' == val[1] or 'W' == val[1]:
+            if (val[1].lower() != prevstate) or (int(val[3], 16) != prevblock):
                 sys.stderr.write("bat IO sequence : line {0}\n".format(i))
                 sys.exit(1)
             ftime = int(val[0], 16)
+            idx = readiotime if 'R' == val[1] else writeiotime
             while stime / interval < ftime / interval:
-                readiohist[-1] += len(readiohist) * interval - stime
-                stime = len(readiohist) * interval
-                readiohist.append(0)
-            readiohist[-1] += ftime - stime
-        elif 'w' == val[1]:
-            if 'w' == prevstate:
-                sys.stderr.write("bat IO sequence : line {0}\n".format(i))
-                sys.exit(1)
-            stime = int(val[0], 16)
-            for i in range(stime / interval - (len(writeiohist) - 1)):
-                writeiohist.append(0)
-        elif 'W' == val[1]:
-            if ('w' != prevstate) or (int(val[3], 16) != prevblock):
-                sys.stderr.write("bat IO sequence : line {0}\n".format(i))
-                sys.exit(1)
-            ftime = int(val[0], 16)
-            while stime / interval < ftime / interval:
-                writeiohist[-1] += len(writeiohist) * interval - stime
-                stime = len(writeiohist) * interval
-                writeiohist.append(0)
-            writeiohist[-1] += ftime - stime
+                iohist[idx][-1] += len(iohist) * interval - stime
+                stime = len(iohist) * interval
+                for j in range(4):
+                    iohist[j].append(0)
+            iohist[idx][-1] += ftime - stime
         prevstate = val[1]
         prevblock = int(val[3], 16)
     return readiohist, writeiohist
