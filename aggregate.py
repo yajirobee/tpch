@@ -55,7 +55,7 @@ def proc_tracefile(iotracefile):
     return sum(iocostprof[0]), sum(iocostprof[1])
 
 
-def proc_directory(devname, corenum, directory):
+def proc_directory(directory, devname, corenum):
     sys.stdout.write("processing {0}\n".format(directory))
     match = re.search("workmem(\d+)(k|M|G)B", directory)
     workmem = proc_suffix(int(match.group(1)), match.group(2))
@@ -74,7 +74,7 @@ def multiprocessing_helper(args):
 
 def main(rootdir, devname, corenum):
     conn = sqlite3.connect(rootdir + "/spec.db")
-    ncore = multiprocessing.cpu_count()
+    ncore = multiprocessing.cpu_count() / 2
     pool = multiprocessing.Pool(ncore)
     dirs = []
     for d in glob.iglob(rootdir + "/workmem*"):
@@ -89,7 +89,7 @@ def main(rootdir, devname, corenum):
                "writeiocost real")
     conn.execute("create table {0} ({1})".format(tblname, ','.join(columns)))
 
-    argslist = [(proc_directory, d, devname, corename) for d in dirs]
+    argslist = [(proc_directory, d, devname, corenum) for d in dirs]
     for vals in pool.map(multiprocessing_helper, argslist):
         conn.execute(("insert into {0} values ({1})"
                       .format(tblname, ','.join('?' * len(columns)))),
