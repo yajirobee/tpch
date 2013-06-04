@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 
 import sys, os, glob, re, Gnuplot
-import drawio, drawcpu, drawiocost
+import drawio, drawcpu, drawiocost, drawioref
+from profileutils import get_reliddict
 from plotutil import query2data, gpinit
 
 slide = False
@@ -25,7 +26,7 @@ def get_iocosts(iodict):
                         #with_ = "linespoints lc 2 lt 1 lw 6")
     return iocostlist
 
-def gen_allgraph(rootdir, terminaltype = "png"):
+def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
     for d in glob.iglob(rootdir + "/workmem*"):
         for dd in glob.iglob(d + "/[0-9]*"):
             outprefix = dd + "/default"
@@ -45,12 +46,22 @@ def gen_allgraph(rootdir, terminaltype = "png"):
                 output += "." + terminaltype
                 drawcpu.plot_cpuprof(cpuprof, output, terminaltype)
             for f in glob.iglob(dd + "/trace_*.iocosthist"):
-                iocostprof = ([], [])
+                iocostprof = tuple([[] for i in range(4)])
                 for line in open(f):
                     for i, v in enumerate(line.strip().split()):
                         iocostprof[i].append(float(v))
                 output = "{0}iocosthist.{1}".format(outprefix, terminaltype)
-                drawiocost.plot_iocostprof(iocostprof, output, terminaltype)
+                drawiocost.plot_iocostprof(iocostprof[:2], output, terminaltype)
+            if reliddict:
+                for f in glob.iglob(dd + "/trace_*.iorefhist"):
+                    iorefhist = []
+                    for line in open(f):
+                        dic = {}
+                        for word in line.strip().split(','):
+                            k, v = word.split(':', 1)
+                            dic[int(k)] = int(v)
+                    output = "{0}iorefhist.{1}".format(outprefix, terminaltype)
+                    drawioref.plot_tblrefhist(reliddict, iorefhist, output, terminaltype)
 
 def plot_workmem_exectime(dbpath, output, terminaltype = "png"):
     gp = gpinit(terminaltype)
@@ -92,19 +103,26 @@ def plot_workmem_exectime(dbpath, output, terminaltype = "png"):
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         rootdir = sys.argv[1]
+        relidfile = None
         terminaltype = "png"
     elif len(sys.argv) == 3:
         rootdir = sys.argv[1]
-        terminaltype = sys.argv[2]
+        relidfile = sys.argv[2]
+        terminaltype = "png"
+    elif len(sys.argv) == 4:
+        rootdir = sys.argv[1]
+        relidfile = sys.argv[2]
+        terminaltype = sys.argv[3]
     else:
         sys.stderr.write(
-            "Usage : {0} rootdir [eps|png]\n".format(sys.argv[0]))
+            "Usage : {0} rootdir [relidfile] [eps|png]\n".format(sys.argv[0]))
         sys.exit(0)
 
     if terminaltype != "png" and terminaltype != "eps":
         sys.stderr.write("wrong terminal type\n")
         sys.exit(1)
 
-    #gen_allgraph(rootdir, terminaltype)
+    reliddict = get_reliddict(relidfile) if relidfile else None
+    #gen_allgraph(rootdir, reliddict, terminaltype)
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     plot_workmem_exectime(rootdir + "/spec.db", output, terminaltype)

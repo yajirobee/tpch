@@ -50,10 +50,13 @@ def proc_tracefile(iotracefile):
     iocostprof = get_iocostprof(iotracefile)
     output = "{0}.iocosthist".format(iotracefile.rsplit('.', 1)[0])
     with open(output, "w") as fo:
-        for line in zip(*iocostprof):
+        for line in zip(*iocostprof[:-1]):
             fo.write('\t'.join([str(v) for v in line]) + "\n")
-    return sum(iocostprof[0]), sum(iocostprof[1])
-
+    output = "{0}.iorefhist".format(iotracefile.rsplit('.', 1)[0])
+    with open(output, "w") as fo:
+        for dic in iocostprof[-1]:
+            fo.write(','.join(["{0}:{1}".format(k, v) for k, v in dic.items()]) + "\n")
+    return tuple([sum(col) for col in iocostprof[:-1]])
 
 def proc_directory(directory, devname, corenum):
     sys.stdout.write("processing {0}\n".format(directory))
@@ -66,31 +69,33 @@ def proc_directory(directory, devname, corenum):
     for f in glob.iglob(directory + "/*.cpu"):
         proc_cpufile(f, corenum)
     f = max(glob.glob(directory + "/trace_*.log"), key = os.path.getsize)
-    riocostsum, wiocostsum = proc_tracefile(f)
-    return workmem, exectime[4], rsum, wsum, riocostsum, wiocostsum
+    riocount, riocost, wiocount, wiocost = proc_tracefile(f)
+    return workmem, exectime[4], rsum, wsum, riocount, wiocount, riocost, wiocost
 
 def multiprocessing_helper(args):
     return args[0](*args[1:])
 
 def main(rootdir, devname, corenum):
-    conn = sqlite3.connect(rootdir + "/spec.db")
     ncore = multiprocessing.cpu_count() / 2
     pool = multiprocessing.Pool(ncore)
     dirs = []
     for d in glob.iglob(rootdir + "/workmem*"):
         dirs.extend(glob.glob(d + "/[0-9]*"))
+    argslist = [(proc_directory, d, devname, corenum) for d in dirs]
+    res = pool.map(multiprocessing_helper, argslist)
 
+    conn = sqlite3.connect(rootdir + "/spec.db")
     tblname = "execspec"
     columns = ("workmem integer",
                "exectime real",
                "readio integer",
                "writeio integer",
+               "readiocount integer",
+               "writeiocount integer",
                "readiocost real",
                "writeiocost real")
     conn.execute("create table {0} ({1})".format(tblname, ','.join(columns)))
-
-    argslist = [(proc_directory, d, devname, corenum) for d in dirs]
-    for vals in pool.map(multiprocessing_helper, argslist):
+    for vals in res:
         conn.execute(("insert into {0} values ({1})"
                       .format(tblname, ','.join('?' * len(columns)))),
                      vals)

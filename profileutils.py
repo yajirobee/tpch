@@ -114,13 +114,11 @@ def get_tblrefprof(iodumpfile):
     return refhist
 
 def get_iocostprof(fpath):
-    readiocount, readiotime, writeiocount, writeiotime = range(4)
-    iohist = tuple([[0] for i in range(4)])
-    readiohist = [0]
-    writeiohist = [0]
+    readiocount, readiotime, writeiocount, writeiotime, readioref = range(5)
+    iohist = ([0], [0], [0], [0], [{}])
     interval = 10 ** 9
     prevstate = None
-    for i, line in enumerate(open(fpath)):
+    for line in open(fpath):
         val = line.strip().split()
         if not val:
             continue
@@ -129,11 +127,17 @@ def get_iocostprof(fpath):
                 sys.stderr.write("bat IO sequence : line {0}\n".format(i))
                 sys.exit(1)
             stime = int(val[0], 16)
-            for i in range(stime / interval - (len(iohist) - 1)):
+            for i in range(stime / interval - (len(iohist[0]) - 1)):
                 for j in range(4):
                     iohist[j].append(0)
+                iohist[readioref].append({})
             idx = readiocount if 'r' == val[1] else writeiocount
             iohist[idx][-1] += 1
+            if 'r' == val[1]:
+                if int(val[2], 16) in iohist[readioref][-1]:
+                    iohist[readioref][-1][int(val[2], 16)] += 1
+                else:
+                    iohist[readioref][-1][int(val[2], 16)] = 1
         elif 'R' == val[1] or 'W' == val[1]:
             if (val[1].lower() != prevstate) or (int(val[3], 16) != prevblock):
                 sys.stderr.write("bat IO sequence : line {0}\n".format(i))
@@ -141,11 +145,12 @@ def get_iocostprof(fpath):
             ftime = int(val[0], 16)
             idx = readiotime if 'R' == val[1] else writeiotime
             while stime / interval < ftime / interval:
-                iohist[idx][-1] += len(iohist) * interval - stime
-                stime = len(iohist) * interval
+                iohist[idx][-1] += len(iohist[0]) * interval - stime
+                stime = len(iohist[0]) * interval
                 for j in range(4):
                     iohist[j].append(0)
+                iohist[readioref].append({})
             iohist[idx][-1] += ftime - stime
         prevstate = val[1]
         prevblock = int(val[3], 16)
-    return readiohist, writeiohist
+    return iohist
