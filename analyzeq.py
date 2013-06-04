@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 
-import sys, os, glob, re, Gnuplot
+import sys, os, glob, re, Gnuplot, sqlite3
 import drawio, drawcpu, drawiocost, drawioref
 from profileutils import get_reliddict
 from plotutil import query2data, gpinit
 
-slide = True
+slide = False
 
 def get_iocosts(iodict):
     iospecdict = {"md0" : {"seqread" : 1294, "randread" : 318, "randwrite" : 1000},
@@ -84,18 +84,21 @@ def plot_workmem_exectime(dbpath, output, terminaltype = "png"):
             plotprefdict = {"with_" : "linespoints lw 2"}
     else:
         plotprefdict = {"with_" : "linespoints" }
-    query = ("select workmem, avg({y}) from execspec "
+    query = ("select workmem, avg(exectime) from measurement "
              "group by workmem order by workmem")
-    gdexec = query2data(dbpath, query.format(y = "exectime"),
-                        title = "Execution time", **plotprefdict)[0]
-    query = ("select workmem, avg({y})/1000000000 from execspec "
+    gdexec = query2data(dbpath, query, title = "Execution time", **plotprefdict)[0]
+    query = ("select workmem, avg({y})/1000000000 from measurement, iotrace "
+             "where measurement.id = iotrace.id "
              "group by workmem order by workmem")
-    gdrio, gdwio = query2data(dbpath, query, y = ("readiocost", "writeiocost"),
-                              title = "{y}", **plotprefdict)
-    gdio = query2data(dbpath, query.format(y = "readiocost + writeiocost"),
+    gdrio = query2data(dbpath, query.format(y = "readio_nsec"),
+                       title = "Read I/O cost", **plotprefdict)[0]
+    gdwio = query2data(dbpath, query.format(y = "writeio_nsec"),
+                       title = "Write I/O cost", **plotprefdict)[0]
+    gdio = query2data(dbpath, query.format(y = "readio_nsec + writeio_nsec"),
                       title = "I/O cost", **plotprefdict)[0]
-    query = ("select workmem, avg(exectime - (readiocost + writeiocost) / 1000000000) "
-             "from execspec group by workmem order by workmem")
+    query = ("select workmem, avg(exectime - (readio_nsec + writeio_nsec) / 1000000000) "
+             "from measurement, iotrace where measurement.id = iotrace.id "
+             "group by workmem order by workmem")
     gdexecwoio = query2data(dbpath, query,
                             title = "CPU cost", **plotprefdict)[0]
     gp.plot(gdexec, gdrio, gdwio, gdio, gdexecwoio)
@@ -118,15 +121,16 @@ def plot_workmem_io(dbpath, output, terminaltype = "png"):
             gp('set termoption font "Times-Roman,28"')
             plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
         elif "png" == terminaltype:
-            gp('set termoption font "Times-Roman,20"')
+            gp('set termoption font "Times-Roman,18"')
             plotprefdict = {"with_" : "linespoints lw 2"}
     else:
         plotprefdict = {"with_" : "linespoints" }
-    query = ("select workmem, avg({y}) from execspec "
+    query = ("select workmem, avg({y}) from measurement, io "
+             "where measurement.id = io.id "
              "group by workmem order by workmem")
-    gdr = query2data(dbpath, query.format(y = "readio"),
+    gdr = query2data(dbpath, query.format(y = "total_readmb"),
                      title = "Read", **plotprefdict)[0]
-    gdw = query2data(dbpath, query.format(y = "writeio"),
+    gdw = query2data(dbpath, query.format(y = "total_writemb"),
                      title = "Write", **plotprefdict)[0]
     gp.plot(gdr, gdw)
     sys.stdout.write("output {0}\n".format(output))
@@ -152,13 +156,56 @@ def plot_workmem_iocount(dbpath, output, terminaltype):
             plotprefdict = {"with_" : "linespoints lw 2"}
     else:
         plotprefdict = {"with_" : "linespoints" }
-    query = ("select workmem, avg({y}) from execspec "
+    query = ("select workmem, avg({y}) from measurement, iotrace "
+             "where measurement.id = iotrace.id "
              "group by workmem order by workmem")
-    gdr = query2data(dbpath, query.format(y = "readiocount"),
+    gdr = query2data(dbpath, query.format(y = "readio_count"),
                      title = "Read", **plotprefdict)[0]
-    gdw = query2data(dbpath, query.format(y = "writeiocount"),
+    gdw = query2data(dbpath, query.format(y = "writeio_count"),
                      title = "Write", **plotprefdict)[0]
     gp.plot(gdr, gdw)
+    sys.stdout.write("output {0}\n".format(output))
+    gp.close()
+
+def plot_workmem_cpuutil(dbpath, output, terminaltype):
+    gp = gpinit(terminaltype)
+    gp('set output "{0}"'.format(output))
+    gp.xlabel("working memory")
+    gp.ylabel("CPU util [%]")
+    gp('set grid')
+    gp('set logscale x')
+    gp('set format x "%.0s%cB"')
+    gp('set xrange [10000:*]')
+    gp('set yrange [0:100]')
+    gp('set key outside')
+    gp('set style fill pattern 1 border')
+    conn = sqlite3.connect(dbpath)
+    conn.row_factory = sqlite3.Row
+    query = ("select workmem, avg(usr) as usr, avg(sys) as sys, avg(iowait) as iowait, "
+             "avg(irq) as irq, avg(soft) as soft, avg(idle) as idle "
+             "from measurement, cpu "
+             "where measurement.id = cpu.id "
+             "group by workmem order by workmem")
+    cur = conn.cursor()
+    cur.execute(query)
+    r = cur.fetchone()
+    keys = r.keys()
+    xlist = []
+    piledatas = [[] for i in range(len(keys[1:]))]
+    xlist.append(r[0])
+    piledatas[0].append(r[1])
+    for i in range(2, len(keys)):
+        piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
+    for r in cur:
+        xlist.append(r[0])
+        piledatas[0].append(r[1])
+        for i in range(2, len(keys)):
+            piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
+    gds = []
+    for k, dat in zip(keys[:0:-1], piledatas[::-1]):
+        gds.append(Gnuplot.Data(xlist, dat, [v / 4 for v in xlist], title = k,
+                               with_ = 'boxes fs solid border lc rgb "black"'))
+    gp.plot(*gds)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
@@ -185,10 +232,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reliddict = get_reliddict(relidfile) if relidfile else None
-    gen_allgraph(rootdir, reliddict, terminaltype)
+    #gen_allgraph(rootdir, reliddict, terminaltype)
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     plot_workmem_exectime(rootdir + "/spec.db", output, terminaltype)
     output = "{0}/io.{1}".format(rootdir, terminaltype)
     plot_workmem_io(rootdir + "/spec.db", output, terminaltype)
     output = "{0}/iocount.{1}".format(rootdir, terminaltype)
     plot_workmem_iocount(rootdir + "/spec.db", output, terminaltype)
+    output = "{0}/cpuutil.{1}".format(rootdir, terminaltype)
+    plot_workmem_cpuutil(rootdir + "/spec.db", output, terminaltype)
