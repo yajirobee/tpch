@@ -84,28 +84,37 @@ def plot_workmem_exectime(dbpath, output, terminaltype = "png"):
             plotprefdict = {"with_" : "linespoints lw 2"}
     else:
         plotprefdict = {"with_" : "linespoints" }
+    conn = sqlite3.connect(dbpath)
+    tbls = [r[0] for r
+            in conn.execute("select name from sqlite_master where type = 'table'")]
+    gds = []
     query = ("select workmem, avg(exectime) from measurement "
              "group by workmem order by workmem")
-    gdexec = query2data(dbpath, query, title = "Execution time", **plotprefdict)[0]
-    query = ("select workmem, avg({y})/1000000000 from measurement, iotrace "
-             "where measurement.id = iotrace.id "
-             "group by workmem order by workmem")
-    gdrio = query2data(dbpath, query.format(y = "readio_nsec"),
-                       title = "Read I/O cost", **plotprefdict)[0]
-    gdwio = query2data(dbpath, query.format(y = "writeio_nsec"),
-                       title = "Write I/O cost", **plotprefdict)[0]
-    gdio = query2data(dbpath, query.format(y = "readio_nsec + writeio_nsec"),
-                      title = "I/O cost", **plotprefdict)[0]
-    query = ("select workmem, avg(exectime - (readio_nsec + writeio_nsec) / 1000000000) "
-             "from measurement, iotrace where measurement.id = iotrace.id "
-             "group by workmem order by workmem")
-    gdexecwoio = query2data(dbpath, query,
-                            title = "CPU cost", **plotprefdict)[0]
-    gp.plot(gdexec, gdrio, gdwio, gdio, gdexecwoio)
+    gds.extend(query2data(conn, query, title = "Execution time", **plotprefdict))
+    if "iotrace" in tbls:
+        query = ("select workmem, avg({y})/1000000000 from measurement, iotrace "
+                 "where measurement.id = iotrace.id "
+                 "group by workmem order by workmem")
+        gds.extend(query2data(conn, query.format(y = "readio_nsec"),
+                              title = "Read I/O cost", **plotprefdict))
+        gds.extend(query2data(conn, query.format(y = "writeio_nsec"),
+                              title = "Write I/O cost", **plotprefdict))
+        gds.extend(query2data(conn, query.format(y = "readio_nsec + writeio_nsec"),
+                              title = "I/O cost", **plotprefdict))
+        query = ("select workmem, avg(exectime - (readio_nsec + writeio_nsec) / 1000000000) "
+                 "from measurement, iotrace where measurement.id = iotrace.id "
+                 "group by workmem order by workmem")
+        gds.extend(query2data(conn, query, title = "CPU cost", **plotprefdict))
+    gp.plot(*gds)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
 def plot_workmem_io(dbpath, output, terminaltype = "png"):
+    conn = sqlite3.connect(dbpath)
+    tbls = [r[0] for r
+            in conn.execute("select name from sqlite_master where type = 'table'")]
+    if "io" not in tbls:
+        return
     gp = gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
     gp.xlabel("working memory")
@@ -128,15 +137,20 @@ def plot_workmem_io(dbpath, output, terminaltype = "png"):
     query = ("select workmem, avg({y}) from measurement, io "
              "where measurement.id = io.id "
              "group by workmem order by workmem")
-    gdr = query2data(dbpath, query.format(y = "total_readmb"),
+    gdr = query2data(conn, query.format(y = "total_readmb"),
                      title = "Read", **plotprefdict)[0]
-    gdw = query2data(dbpath, query.format(y = "total_writemb"),
+    gdw = query2data(conn, query.format(y = "total_writemb"),
                      title = "Write", **plotprefdict)[0]
     gp.plot(gdr, gdw)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
 def plot_workmem_iocount(dbpath, output, terminaltype):
+    conn = sqlite3.connect(dbpath)
+    tbls = [r[0] for r
+            in conn.execute("select name from sqlite_master where type = 'table'")]
+    if "iotrace" not in tbls:
+        return
     gp = gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
     gp.xlabel("working memory")
@@ -168,6 +182,11 @@ def plot_workmem_iocount(dbpath, output, terminaltype):
     gp.close()
 
 def plot_workmem_cpuutil(dbpath, output, terminaltype):
+    conn = sqlite3.connect(dbpath)
+    tbls = [r[0] for r
+            in conn.execute("select name from sqlite_master where type = 'table'")]
+    if "cpu" not in tbls:
+        return
     gp = gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
     gp.xlabel("working memory")
