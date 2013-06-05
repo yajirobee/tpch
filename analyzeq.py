@@ -6,6 +6,7 @@ from profileutils import get_reliddict
 from plotutil import query2data, gpinit
 
 slide = False
+xlogplot = True
 
 def get_iocosts(iodict):
     iospecdict = {"md0" : {"seqread" : 1294, "randread" : 318, "randwrite" : 1000},
@@ -68,9 +69,10 @@ class workmem_plotter(object):
     def __init__(self, dbpath, terminaltype = "png"):
         self.conn = sqlite3.connect(dbpath)
         self.gp = gpinit(terminaltype)
-        self.gp.xlabel("working memory")
-        self.gp('set format x "%.0b%BB"')
-        self.gp('set logscale x')
+        self.gp.xlabel("working memory [byte]")
+        self.gp('set format x "%.0b%B"')
+        if xlogplot:
+            self.gp('set logscale x 2')
         self.gp('set grid')
         if slide:
             if "eps" == terminaltype:
@@ -89,7 +91,7 @@ class workmem_plotter(object):
     def plot_workmem_exectime(self, output):
         self.gp('set output "{0}"'.format(output))
         self.gp.ylabel("Time [s]")
-        self.gp('set yrange [*:*]')
+        self.gp('set yrange [0:*]')
         self.gp('set key right top')
         nrow = self.conn.execute("select count(*) from iotrace").fetchone()[0]
         gds = []
@@ -119,7 +121,7 @@ class workmem_plotter(object):
             return
         self.gp('set output "{0}"'.format(output))
         self.gp.ylabel("Total I/O size [MB]")
-        self.gp('set yrange [*:*]')
+        self.gp('set yrange [0:*]')
         self.gp('set key right center')
         query = ("select workmem, avg({y}) from measurement, io "
                  "where measurement.id = io.id "
@@ -180,8 +182,12 @@ class workmem_plotter(object):
             for i in range(2, len(keys)):
                 piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
         gds = []
+        if xlogplot:
+            widthlist = [v / 4 for v in xlist]
+        else:
+            widthlist = [2 ** 20 / 2 for v in xlist]
         for k, dat in zip(keys[:0:-1], piledatas[::-1]):
-            gds.append(Gnuplot.Data(xlist, dat, [v / 4 for v in xlist],
+            gds.append(Gnuplot.Data(xlist, dat, widthlist,
                                     title = k,
                                     with_ = 'boxes fs solid border lc rgb "black"'))
         self.gp.plot(*gds)
@@ -225,8 +231,12 @@ class workmem_plotter(object):
             for i in range(len(keys[2:])):
                 piledatas[i][-1] *= r[1]
         gds = []
+        if xlogplot:
+            widthlist = [v / 4 for v in xlist]
+        else:
+            widthlist = [2 ** 20 / 2 for v in xlist]
         for k, dat in zip(keys[:0:-1], piledatas[::-1]):
-            gds.append(Gnuplot.Data(xlist, dat, [v / 4 for v in xlist],
+            gds.append(Gnuplot.Data(xlist, dat, widthlist,
                                     title = k,
                                     with_ = 'boxes fs solid border lc rgb "black"'))
         self.gp.plot(*gds)
@@ -257,6 +267,8 @@ if __name__ == "__main__":
 
     reliddict = get_reliddict(relidfile) if relidfile else None
     #gen_allgraph(rootdir, reliddict, terminaltype)
+
+    #xlogplot = False
     wp = workmem_plotter(rootdir + "/spec.db", terminaltype)
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_exectime(output)
