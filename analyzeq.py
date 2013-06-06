@@ -135,6 +135,36 @@ def plot_workmem_io(dbpath, output, terminaltype = "png"):
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
+def plot_workmem_iocount(dbpath, output, terminaltype):
+    gp = gpinit(terminaltype)
+    gp('set output "{0}"'.format(output))
+    gp.xlabel("working memory")
+    gp.ylabel("I/O count")
+    gp('set grid')
+    gp('set logscale x')
+    gp('set format x "%.0s%cB"')
+    gp('set xrange [10000:*]')
+    #gp('set yrange [0:1800]')
+    gp('set key right center')
+    if slide:
+        if "eps" == terminaltype:
+            gp('set termoption font "Times-Roman,28"')
+            plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
+        elif "png" == terminaltype:
+            gp('set termoption font "Times-Roman,20"')
+            plotprefdict = {"with_" : "linespoints lw 2"}
+    else:
+        plotprefdict = {"with_" : "linespoints" }
+    query = ("select workmem, avg({y}) from execspec "
+             "group by workmem order by workmem")
+    gdr = query2data(dbpath, query.format(y = "readiocount"),
+                     title = "Read", **plotprefdict)[0]
+    gdw = query2data(dbpath, query.format(y = "writeiocount"),
+                     title = "Write", **plotprefdict)[0]
+    gp.plot(gdr, gdw)
+    sys.stdout.write("output {0}\n".format(output))
+    gp.close()
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         rootdir = sys.argv[1]
@@ -158,8 +188,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reliddict = get_reliddict(relidfile) if relidfile else None
-    gen_allgraph(rootdir, reliddict, terminaltype)
+    #gen_allgraph(rootdir, reliddict, terminaltype)
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     plot_workmem_exectime(rootdir + "/spec.db", output, terminaltype)
     output = "{0}/io.{1}".format(rootdir, terminaltype)
     plot_workmem_io(rootdir + "/spec.db", output, terminaltype)
+    output = "{0}/iocount.{1}".format(rootdir, terminaltype)
+    plot_workmem_iocount(rootdir + "/spec.db", output, terminaltype)
