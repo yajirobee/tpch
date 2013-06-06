@@ -43,7 +43,8 @@ def proc_iofile(iofile, devname):
         ave = np.array(ioprof[0])
         for arr in ioprof[1:]:
             ave += arr
-        ave /= len(ioprof)
+        for i in (0, 1, 6, 7, 8, 9, 10):
+            ave[i] /= len(ioprof)
         ave = ave.tolist()
     return ave
 
@@ -70,17 +71,16 @@ def proc_tracefile(iotracefile):
     fr = open(refoutput, "w")
     for line in iocostprof:
         fs.write('\t'.join([str(v) for v in line[:-1]]) + "\n")
-        fr.write(','.join(["{0}:{1}".format(k, v) for k, v in line[-1]]) + "\n")
+        fr.write(','.join(["{0}:{1}".format(k, v) for k, v in line[-1].items()]) + "\n")
     fs.close()
     fr.close()
-    ave = None
+    total = None
     if iocostprof:
-        ave = np.array(iocostprof[0][:-1])
+        total = np.array(iocostprof[0][:-1])
         for arr in iocostprof[1:]:
-            ave += arr[:-1]
-        ave /= len(iocostprof)
-        ave = ave.tolist()
-    return ave
+            total += arr[:-1]
+        total = total.tolist()
+    return total
 
 def proc_directory(directory, devname, corenum):
     sys.stdout.write("processing {0}\n".format(directory))
@@ -125,10 +125,10 @@ def main(rootdir, devname, corenum):
     iostatcols = ("id integer",
                   "rrpm_per_sec real",
                   "wrpm_per_sec real",
-                  "rio_per_sec real",
-                  "wio_per_sec real",
-                  "rmb_per_sec real",
-                  "wmbc_per_sec real",
+                  "total_readio real",
+                  "total_writeio real",
+                  "total_readmb real",
+                  "total_writemb real",
                   "request_size real",
                   "queue_length real",
                   "wait_msec real",
@@ -158,7 +158,7 @@ def main(rootdir, devname, corenum):
         conn.execute("create table {0} ({1})".format(k, ','.join(v)))
     for i, vals in enumerate(res):
         query = "insert into {0} values ({1})"
-        conn.execute(query.format(maintbl, ','.join('?' * len(maintbl))),
+        conn.execute(query.format(maintbl, ','.join('?' * len(maincols))),
                      (i, vals[0], vals[1]))
         if vals[2]:
             vals[2].pop(9) # remove svctm column
