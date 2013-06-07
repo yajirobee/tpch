@@ -209,6 +209,54 @@ def plot_workmem_cpuutil(dbpath, output, terminaltype):
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
+def plot_workmem_cputime(dbpath, output, terminaltype):
+    gp = gpinit(terminaltype)
+    gp('set output "{0}"'.format(output))
+    gp.xlabel("working memory")
+    gp.ylabel("Time [s]")
+    gp('set grid')
+    gp('set logscale x')
+    gp('set format x "%.0s%cB"')
+    gp('set xrange [10000:*]')
+    gp('set yrange [0:*]')
+    gp('set key outside')
+    gp('set style fill pattern 1 border')
+    conn = sqlite3.connect(dbpath)
+    conn.row_factory = sqlite3.Row
+    query = ("select workmem, avg(exectime) as exectime, "
+             "avg(usr) / 100 as usr, avg(sys) / 100 as sys, "
+             "avg(iowait) / 100 as iowait, avg(irq) / 100 as irq, "
+             "avg(soft) / 100 as soft, avg(idle) / 100 as idle "
+             "from measurement, cpu "
+             "where measurement.id = cpu.id "
+             "group by workmem order by workmem")
+    cur = conn.cursor()
+    cur.execute(query)
+    r = cur.fetchone()
+    keys = r.keys()
+    xlist = []
+    piledatas = [[] for i in range(len(keys[2:]))]
+    xlist.append(r[0])
+    piledatas[0].append(r[2])
+    for i in range(3, len(keys)):
+        piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
+    for i in range(len(keys[2:])):
+        piledatas[i][-1] *= r[1]
+    for r in cur:
+        xlist.append(r[0])
+        piledatas[0].append(r[2])
+        for i in range(3, len(keys)):
+            piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
+        for i in range(len(keys[2:])):
+            piledatas[i][-1] *= r[1]
+    gds = []
+    for k, dat in zip(keys[:0:-1], piledatas[::-1]):
+        gds.append(Gnuplot.Data(xlist, dat, [v / 4 for v in xlist], title = k,
+                               with_ = 'boxes fs solid border lc rgb "black"'))
+    gp.plot(*gds)
+    sys.stdout.write("output {0}\n".format(output))
+    gp.close()
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         rootdir = sys.argv[1]
@@ -241,3 +289,5 @@ if __name__ == "__main__":
     plot_workmem_iocount(rootdir + "/spec.db", output, terminaltype)
     output = "{0}/cpuutil.{1}".format(rootdir, terminaltype)
     plot_workmem_cpuutil(rootdir + "/spec.db", output, terminaltype)
+    output = "{0}/cputime.{1}".format(rootdir, terminaltype)
+    plot_workmem_cputime(rootdir + "/spec.db", output, terminaltype)
