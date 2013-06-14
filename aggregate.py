@@ -90,7 +90,8 @@ def proc_directory(directory, devname, corenum):
     dirs = glob.glob(directory + "/*.time")
     if dirs:
         for f in dirs:
-            exectime = [float(v) for v in open(f).readline().strip().split()]
+            exectime = float(open(f).readline().strip())
+            #exectime = [float(v) for v in open(f).readline().strip().split()]
     else:
         for f in glob.iglob(directory + "/*.res"):
             exectime = get_exectime(f)
@@ -102,7 +103,7 @@ def proc_directory(directory, devname, corenum):
     if dirs:
         f = max(dirs, key = os.path.getsize)
         sumiocost = proc_tracefile(f)
-    return workmem, exectime[4], sumio, sumcpu, sumiocost
+    return workmem, exectime, sumio, sumcpu, sumiocost
 
 def multiprocessing_helper(args):
     return args[0](*args[1:])

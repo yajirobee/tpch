@@ -266,9 +266,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reliddict = get_reliddict(relidfile) if relidfile else None
-    #gen_allgraph(rootdir, reliddict, terminaltype)
+    gen_allgraph(rootdir, reliddict, terminaltype)
 
-    #xlogplot = False
+    xlogplot = True
     wp = workmem_plotter(rootdir + "/spec.db", terminaltype)
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_exectime(output)
