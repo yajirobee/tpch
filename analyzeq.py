@@ -45,6 +45,13 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
                 output = f.rsplit('.', 1)[0] + os.path.basename(d)
                 output += "." + terminaltype
                 drawcpu.plot_cpuprof(cpuprof, output, terminaltype)
+            for f in glob.iglob(dd + "/*.cachehist"):
+                cacheprof = []
+                for line in open(f):
+                    cacheprof.append([float(v) for v in line.strip().split()])
+                output = f.rsplit('.', 1)[0] + os.path.basename(d)
+                output += "." + terminaltype
+                drawcachemiss.plot_cachemiss(cacheprof, output, terminaltype)
             for f in glob.iglob(dd + "/trace_*.iocosthist"):
                 iocostprof = []
                 for line in open(f):

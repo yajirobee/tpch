@@ -2,7 +2,6 @@
 
 import sys, os, Gnuplot
 import plotutil
-from profileutils import get_iocostprof
 
 interval = 10. ** 9
 
@@ -35,6 +34,7 @@ if __name__ == "__main__":
         sys.stdout.write("Usage : {0} iotracefile [png|eps]\n".format(sys.argv[0]))
         sys.exit(0)
 
+    from profileutils import get_iocostprof
     iocostprof = get_iocostprof(iotracefile)
     fprefix = iotracefile.rsplit('.', 1)[0]
     output = "{0}iocosthist.{1}".format(fprefix, terminaltype)

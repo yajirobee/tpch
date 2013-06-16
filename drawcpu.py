@@ -2,7 +2,6 @@
 
 import sys, os, re, Gnuplot
 import plotutil
-from profileutils import get_cpuprof
 
 keys = ("usr", "nice", "sys", "iowait", "irq", "soft", "steal", "guest", "idle")
 
@@ -50,6 +49,7 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
+    from profileutils import get_cpuprof
     cpuprof = get_cpuprof(cpufile, core)
 
     fprefix = cpufile.rsplit('.', 1)[0]

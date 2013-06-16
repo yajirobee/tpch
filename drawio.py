@@ -2,7 +2,6 @@
 
 import sys, os, re, Gnuplot
 import plotutil
-from profileutils import get_ioprof
 
 slide = False
 
@@ -73,6 +72,7 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
+    from profileutils import get_ioprof
     ioprof = get_ioprof(iofile, devname)
     outprefix = iofile.rsplit('.', 1)[0]
 

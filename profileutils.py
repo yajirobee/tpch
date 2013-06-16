@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import sys, os, re
+import sys, os, re, glob
 import numpy as np
 
 def get_mdioprof(fpath, devname):
@@ -14,10 +14,8 @@ def get_mdioprof(fpath, devname):
             if tmp:
                 if comp:
                     ave = comp[0]
-                    for arr in comp[1:]:
-                        ave += arr
-                    for i in range(6, ave.size):
-                        ave[i] /= len(comp)
+                    for arr in comp[1:]: ave += arr
+                    for i in range(6, ave.size): ave[i] /= len(comp)
                     tmp[:2] = ave[:2]
                     tmp[6:] = ave[6:]
                     comp = []
@@ -35,8 +33,7 @@ def get_normioprof(fpath, devname):
     ioprof = []
     for line in open(fpath):
         val = line.split()
-        if not val:
-            continue
+        if not val: continue
         elif val[0] == devname:
             tmp = [float(v) for v in val[1:]]
             tmp[4] *= 512 * (10 ** -6) # convert read throughput from sec/s to MB/s
@@ -46,10 +43,8 @@ def get_normioprof(fpath, devname):
 
 def get_ioprof(fpath, devname):
     "get histgram of IO profile"
-    if devname == "md0":
-        return get_mdioprof(fpath, devname)
-    else:
-        return get_normioprof(fpath, devname)
+    if devname == "md0": return get_mdioprof(fpath, devname)
+    else: return get_normioprof(fpath, devname)
 
 def get_cpuprof(fpath, core):
     "get histgram of a CPU core usage"
@@ -74,14 +69,12 @@ def get_allcpuprof(fpath, col):
         if not val or val[1] == "all" or val[1] == "CPU":
             continue
         elif date != val[0] and datepat.search(val[0]):
-            if date:
-                utilhist.append(util)
+            if date: utilhist.append(util)
             date = val[0]
             util = 0.
         if floatpat.search(val[col]):
             tmp = float(val[col])
-            if tmp > 2.0:
-                util += tmp
+            if tmp > 2.0: util += tmp
     return utilhist
 
 def get_reliddict(relidfile):
@@ -89,10 +82,8 @@ def get_reliddict(relidfile):
     reliddict = {0 : "temporary"}
     for line in open(relidfile):
         vals = [v.strip() for v in line.split('|')]
-        if len(vals) != 2 or not vals[0].isdigit():
-            continue
-        else:
-            reliddict[int(vals[0])] = vals[1]
+        if len(vals) != 2 or not vals[0].isdigit(): continue
+        else: reliddict[int(vals[0])] = vals[1]
     return reliddict
 
 def get_tblrefprof(iodumpfile):
@@ -109,10 +100,8 @@ def get_tblrefprof(iodumpfile):
             time = (int(vals[0], 16) - stime) / 1000 ** 3
             if time == elapsed:
                 relname = int(vals[5], 16)
-                if relname in refdict:
-                    refdict[relname] += 1
-                else:
-                    refdict[relname] = 1
+                if relname in refdict: refdict[relname] += 1
+                else: refdict[relname] = 1
             else:
                 assert(time > elapsed)
                 for i in range(time - elapsed):
@@ -159,3 +148,22 @@ def get_iocostprof(fpath):
         prevstate = val[1]
         prevblock = int(val[3], 16)
     return iohist
+
+def get_cacheprof(fpath, corenum):
+    cachehist = []
+    t = 0
+    interval = 5
+    cycles, cacheref, cachemiss = 0, 0, 0
+    corepat = "CPU{0}".format(corenum)
+    for line in open(fpath):
+        vals = line.strip().split()
+        if not vals or len(vals) < 3: continue
+        elif corepat == vals[0]:
+            if "cycles" == vals[2]: cycles = int(vals[1])
+            elif "cache-references" == vals[2]: cacheref = int(vals[1])
+            elif "cache-misses" == vals[2]: cachemiss = int(vals[1])
+        elif "time" == vals[2] and "elapsed" == vals[3]:
+            cachehist.append((t, cycles, cacheref, cachemiss))
+            t += interval
+            cycles, cacheref, cachemiss = 0, 0, 0
+    return cachehist

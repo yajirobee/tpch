@@ -2,7 +2,6 @@
 
 import sys, os, Gnuplot
 import plotutil
-from profileutils import get_reliddict, get_tblrefprof
 
 def plot_tblrefhist(reliddict, refhist, output, terminaltype = "png"):
     rellist = [0]
@@ -57,6 +56,7 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
+    from profileutils import get_reliddict, get_tblrefprof
     reliddict = get_reliddict(relidfile)
     refhist = get_tblrefprof(iodumpfile)
 

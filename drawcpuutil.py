@@ -2,7 +2,6 @@
 
 import sys, os, re, Gnuplot
 import plotutil
-from profileutils import get_allcpuprof
 
 utilcol = 2
 
@@ -22,6 +21,7 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
+    from profileutils import get_allcpuprof
     sysutil = get_allcpuprof(cpuproffile, utilcol)
 
     fprefix = cpuproffile.rsplit('.', 1)[0]

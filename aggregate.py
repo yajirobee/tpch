@@ -6,12 +6,9 @@ import drawio, drawcpu
 from profileutils import get_ioprof, get_cpuprof, get_iocostprof
 
 def proc_suffix(val, prefix):
-    if 'k' == prefix:
-        val *= 2 ** 10
-    elif 'M' == prefix:
-        val *= 2 ** 20
-    elif 'G' == prefix:
-        val *= 2 ** 30
+    if 'k' == prefix: val *= 2 ** 10
+    elif 'M' == prefix: val *= 2 ** 20
+    elif 'G' == prefix: val *= 2 ** 30
     else:
         sys.stderr.write("wrong prefix\n")
         sys.exit(1)
@@ -36,15 +33,12 @@ def proc_iofile(iofile, devname):
     ioprof = get_ioprof(iofile, devname)
     output = "{0}.iohist".format(iofile.rsplit('.', 1)[0])
     with open(output, "w") as fo:
-        for line in ioprof:
-            fo.write('\t'.join([str(v) for v in line]) + "\n")
+        for line in ioprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
     ave = None
     if ioprof:
         ave = np.array(ioprof[0])
-        for arr in ioprof[1:]:
-            ave += arr
-        for i in (0, 1, 6, 7, 8, 9, 10):
-            ave[i] /= len(ioprof)
+        for arr in ioprof[1:]: ave += arr
+        for i in (0, 1, 6, 7, 8, 9, 10): ave[i] /= len(ioprof)
         ave = ave.tolist()
     return ave
 
@@ -57,11 +51,18 @@ def proc_cpufile(cpufile, corenum):
     ave = None
     if cpuprof:
         ave = np.array(cpuprof[0])
-        for arr in cpuprof[1:]:
-            ave += arr
+        for arr in cpuprof[1:]: ave += arr
         ave /= len(cpuprof)
         ave = ave.tolist()
     return ave
+
+def proc_statfile(statfile, corenum):
+    cacheprof = get_cacheprof(statfile, corenum)
+    output = "{0}_core{1}.cachehist".format(statfile.rsplit('.' , 1)[0], corenum)
+    with open(output, "w") as fo:
+        for line in cacheprof:
+            fo.write('\t'.join([str(v) for v in line]) + "\n")
+    return None
 
 def proc_tracefile(iotracefile):
     iocostprof = get_iocostprof(iotracefile)
@@ -77,8 +78,7 @@ def proc_tracefile(iotracefile):
     total = None
     if iocostprof:
         total = np.array(iocostprof[0][:-1])
-        for arr in iocostprof[1:]:
-            total += arr[:-1]
+        for arr in iocostprof[1:]: total += arr[:-1]
         total = total.tolist()
     return total
 
@@ -89,16 +89,13 @@ def proc_directory(directory, devname, corenum):
     sumio, sumcpu, sumiocost = None, None, None
     dirs = glob.glob(directory + "/*.time")
     if dirs:
-        for f in dirs:
-            exectime = float(open(f).readline().strip())
+        for f in dirs: exectime = float(open(f).readline().strip())
             #exectime = [float(v) for v in open(f).readline().strip().split()]
     else:
-        for f in glob.iglob(directory + "/*.res"):
-            exectime = get_exectime(f)
-    for f in glob.iglob(directory + "/*.io"):
-        sumio = proc_iofile(f, devname)
-    for f in glob.iglob(directory + "/*.cpu"):
-        sumcpu = proc_cpufile(f, corenum)
+        for f in glob.iglob(directory + "/*.res"): exectime = get_exectime(f)
+    for f in glob.iglob(directory + "/*.io"): sumio = proc_iofile(f, devname)
+    for f in glob.iglob(directory + "/*.cpu"): sumcpu = proc_cpufile(f, corenum)
+    for f in glob.iglob(directory + "/*.perf"): proc_statfile(f, corenum)
     dirs = glob.glob(directory + "/trace_*.log")
     if dirs:
         f = max(dirs, key = os.path.getsize)
