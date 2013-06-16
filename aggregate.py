@@ -3,7 +3,7 @@
 import sys, os, glob, re, multiprocessing, sqlite3
 import numpy as np
 import drawio, drawcpu
-from profileutils import get_ioprof, get_cpuprof, get_iocostprof
+from profileutils import get_ioprof, get_cpuprof, get_iocostprof, get_cacheprof
 
 def proc_suffix(val, prefix):
     if 'k' == prefix: val *= 2 ** 10
