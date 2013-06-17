@@ -156,8 +156,8 @@ def main(rootdir, devname, corenum):
     cachetbl = "cache"
     cachecols = ("id integer",
                  "cycles integer",
-                 "cache-references integer",
-                 "cache-misses integer")
+                 "cache_references integer",
+                 "cache_misses integer")
     tbldict = {maintbl : maincols,
                iostattbl : iostatcols,
                cputbl : cpucols,

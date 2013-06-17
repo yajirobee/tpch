@@ -267,11 +267,11 @@ class workmem_plotter(object):
         query = ("select workmem, sum({y}) from measurement, cache "
                  "where measurement.id = cache.id "
                  "group by workmem order by workmem")
-        gds.extend(query2data(self.conn, query.format(y = "cache-references"),
+        gds.extend(query2data(self.conn, query.format(y = "cache_references"),
                               axes = "x1y1", **self.plotprefdict))
-        gds.extend(query2data(self.conn, query.format(y = "cache-misses"),
+        gds.extend(query2data(self.conn, query.format(y = "cache_misses"),
                               axes = "x1y1", **self.plotprefdict))
-        query = ("select workmem, avg(cache-misses / cache-references) "
+        query = ("select workmem, avg(cache_misses / cache_references) "
                  "from measurement, cache "
                  "where measurement.id = cache.id "
                  "group by workmem order by workmem")
