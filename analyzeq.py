@@ -214,8 +214,9 @@ class workmem_plotter(object):
         self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(exectime) as exectime, "
                  "avg(usr) / 100 as usr, avg(sys) / 100 as sys, "
-                 "avg(iowait) / 100 as iowait, avg(irq) / 100 as irq, "
-                 "avg(soft) / 100 as soft, avg(idle) / 100 as idle "
+                 "avg(iowait) / 100 as iowait, "
+                 #"avg(irq) / 100 as irq, avg(soft) / 100 as soft, "
+                 "avg(idle) / 100 as idle "
                  "from measurement, cpu "
                  "where measurement.id = cpu.id "
                  "group by workmem order by workmem")
