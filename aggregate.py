@@ -62,7 +62,12 @@ def proc_statfile(statfile, corenum):
     with open(output, "w") as fo:
         for line in cacheprof:
             fo.write('\t'.join([str(v) for v in line]) + "\n")
-    return None
+    cycle, cacheref, cachemiss = [], [], []
+    for v in cacheprof:
+        cycle.append(v[1])
+        cacheref.append(v[2])
+        cachemiss.append(v[3])
+    return [sum(cycle), sum(cacheref), sum(cachemiss)]
 
 def proc_tracefile(iotracefile):
     iocostprof = get_iocostprof(iotracefile)
@@ -95,12 +100,12 @@ def proc_directory(directory, devname, corenum):
         for f in glob.iglob(directory + "/*.res"): exectime = get_exectime(f)
     for f in glob.iglob(directory + "/*.io"): sumio = proc_iofile(f, devname)
     for f in glob.iglob(directory + "/*.cpu"): sumcpu = proc_cpufile(f, corenum)
-    for f in glob.iglob(directory + "/*.perf"): proc_statfile(f, corenum)
+    for f in glob.iglob(directory + "/*.perf"): sumcache = proc_statfile(f, corenum)
     dirs = glob.glob(directory + "/trace_*.log")
     if dirs:
         f = max(dirs, key = os.path.getsize)
         sumiocost = proc_tracefile(f)
-    return workmem, exectime, sumio, sumcpu, sumiocost
+    return workmem, exectime, sumio, sumcpu, sumiocost, sumcache
 
 def multiprocessing_helper(args):
     return args[0](*args[1:])
@@ -148,10 +153,16 @@ def main(rootdir, devname, corenum):
                    "writeio_count integer",
                    "readio_nsec real",
                    "writeio_nsec real")
+    cachetbl = "cache"
+    cachecols = ("id integer",
+                 "cycles integer",
+                 "cache-references integer",
+                 "cache-misses integer")
     tbldict = {maintbl : maincols,
                iostattbl : iostatcols,
                cputbl : cpucols,
-               iotracetbl : iotracecols}
+               iotracetbl : iotracecols,
+               cachetbl : cachecols}
     for k, v in tbldict.items():
         conn.execute("create table {0} ({1})".format(k, ','.join(v)))
     for i, vals in enumerate(res):
@@ -171,6 +182,10 @@ def main(rootdir, devname, corenum):
             vals[4].insert(0, i)
             conn.execute(query.format(iotracetbl, ','.join('?' * len(iotracecols))),
                          vals[4])
+        if vals[5]:
+            vals[5].insert(0, i)
+            conn.execute(query.format(cachetbl, ','.join('?' * len(cachecols))),
+                         vals[5])
         conn.commit()
     conn.close()
 

@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import sys, os, glob, re, Gnuplot, sqlite3
-import drawio, drawcpu, drawiocost, drawioref
+import drawio, drawcpu, drawiocost, drawioref, drawcachemiss
 from profileutils import get_reliddict
 from plotutil import query2data, gpinit
 
@@ -76,6 +76,7 @@ class workmem_plotter(object):
     def __init__(self, dbpath, terminaltype = "png"):
         self.conn = sqlite3.connect(dbpath)
         self.gp = gpinit(terminaltype)
+        #self.gp('set terminal epslatex color 11')
         self.gp.xlabel("working memory [byte]")
         self.gp('set format x "%.0b%B"')
         if xlogplot:
@@ -146,7 +147,7 @@ class workmem_plotter(object):
             return
         self.gp('set output "{0}"'.format(output))
         self.gp.ylabel("I/O count")
-        self.gp('set yrange[*:*]')
+        self.gp('set yrange[0:*]')
         self.gp('set key right center')
         query = ("select workmem, avg({y}) from measurement, iotrace "
                  "where measurement.id = iotrace.id "
@@ -250,6 +251,35 @@ class workmem_plotter(object):
         sys.stdout.write("output {0}\n".format(output))
         self.conn.row_factory = None
 
+    def plot_workmem_cache(self, output):
+        nrow = self.conn.execute("select count(*) from cache").fetchone()[0]
+        if not nrow:
+            return
+        self.gp('set output "{0}"'.format(output))
+        self.gp.ylabel("count")
+        self.gp('set ytics nomirror')
+        self.gp('set y2label "cache miss rate [%]"')
+        self.gp('set yrange[0:*]')
+        self.gp('set y2range [0:100]')
+        self.gp('set y2tic 10')
+        self.gp('set key right top')
+        gds = []
+        query = ("select workmem, sum({y}) from measurement, cache "
+                 "where measurement.id = cache.id "
+                 "group by workmem order by workmem")
+        gds.extend(query2data(self.conn, query.format(y = "cache-references"),
+                              axes = "x1y1", **self.plotprefdict))
+        gds.extend(query2data(self.conn, query.format(y = "cache-misses"),
+                              axes = "x1y1", **self.plotprefdict))
+        query = ("select workmem, avg(cache-misses / cache-references) "
+                 "from measurement, cache "
+                 "where measurement.id = cache.id "
+                 "group by workmem order by workmem")
+        gds.extend(query2data(self.conn, query,
+                              axes = "x1y2", **self.plotprefdict))
+        self.gp.plot(*gds)
+        sys.stdout.write("output {0}\n".format(output))
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         rootdir = sys.argv[1]
@@ -273,7 +303,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reliddict = get_reliddict(relidfile) if relidfile else None
-    gen_allgraph(rootdir, reliddict, terminaltype)
+    #gen_allgraph(rootdir, reliddict, terminaltype)
 
     xlogplot = True
     wp = workmem_plotter(rootdir + "/spec.db", terminaltype)
@@ -287,3 +317,5 @@ if __name__ == "__main__":
     wp.plot_workmem_cpuutil(output)
     output = "{0}/cputime.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_cputime(output)
+    output = "{0}/cache.{1}".format(rootdir, terminaltype)
+    wp.plot_workmem_cache(output)
