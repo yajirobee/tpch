@@ -49,7 +49,7 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
                 cacheprof = []
                 for line in open(f):
                     cacheprof.append([float(v) for v in line.strip().split()])
-                output = f.rsplit('.', 1)[0] + os.path.basename(d)
+                output = f.rsplit('.', 1)[0] + os.path.basename(d) + "cache"
                 output += "." + terminaltype
                 drawcachemiss.plot_cachemiss(cacheprof, output, terminaltype)
             for f in glob.iglob(dd + "/trace_*.iocosthist"):
@@ -262,20 +262,20 @@ class workmem_plotter(object):
         self.gp('set yrange[0:*]')
         self.gp('set y2range [0:100]')
         self.gp('set y2tic 10')
-        self.gp('set key right top')
+        self.gp('set key inside right top')
         gds = []
-        query = ("select workmem, sum({y}) from measurement, cache "
+        query = ("select workmem, avg({y}) from measurement, cache "
                  "where measurement.id = cache.id "
                  "group by workmem order by workmem")
         gds.extend(query2data(self.conn, query.format(y = "cache_references"),
+                              title = "cache-regerences",
                               axes = "x1y1", **self.plotprefdict))
         gds.extend(query2data(self.conn, query.format(y = "cache_misses"),
+                              title = "cache-misses",
                               axes = "x1y1", **self.plotprefdict))
-        query = ("select workmem, avg(cache_misses / cache_references) "
-                 "from measurement, cache "
-                 "where measurement.id = cache.id "
-                 "group by workmem order by workmem")
-        gds.extend(query2data(self.conn, query,
+        gds.extend(query2data(self.conn,
+                              query.format(y = "(cast(cache_misses as real) / cache_references) * 100"),
+                              title = "cache-miss-rate",
                               axes = "x1y2", **self.plotprefdict))
         self.gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
