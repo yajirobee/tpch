@@ -7,10 +7,10 @@ def plot_cachemiss(cacheprof, output, terminaltype = "png"):
     gp = plotutil.gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
     gp.xlabel('elapsed time [s]')
-    gp.ylabel('count')
     gp('set ytics nomirror')
-    gp('set y2label "cache miss rate [%]"')
-    gp('set yrange [0:*]')
+    gp('set ylabel "count" offset 4')
+    gp('set y2label "cache miss rate [%]" offset -2')
+    gp('set yrange [0:1.2e+08]')
     gp('set y2range [0:100]')
     gp('set y2tic 10')
     gds = []
@@ -20,15 +20,16 @@ def plot_cachemiss(cacheprof, output, terminaltype = "png"):
         cacheref.append(v[2])
         cachemiss.append(v[3])
         cachemissrate.append((float(v[3]) / v[2]) * 100)
+    plotprefdict = {"with_" : "lines lw 2"}
     gds.append(Gnuplot.Data(xlist, cacheref,
-                            title = "cache reference",
-                            axes = "x1y1", with_ = "lines"))
+                            title = "cache reference", axes = "x1y1",
+                            **plotprefdict))
     gds.append(Gnuplot.Data(xlist, cachemiss,
-                            title = "cache miss",
-                            axes = "x1y1", with_ = "lines"))
+                            title = "cache miss", axes = "x1y1",
+                            **plotprefdict))
     gds.append(Gnuplot.Data(xlist, cachemissrate,
-                            title = "cache miss rate",
-                            axes = "x1y2", with_ = "lines"))
+                            title = "cache miss rate", axes = "x1y2",
+                            **plotprefdict))
     gp.plot(*gds)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()

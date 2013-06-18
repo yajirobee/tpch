@@ -34,28 +34,18 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
             for f in glob.iglob(dd + "/*.res"):
                 outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
             for f in glob.iglob(dd + "/*.iohist"):
-                ioprof = []
-                for line in open(f):
-                    ioprof.append([float(v) for v in line.strip().split()])
+                ioprof = [[float(v) for v in line.strip().split()] for line in open(f)]
                 drawio.plot_ioprof(ioprof, outprefix, terminaltype)
             for f in glob.iglob(dd + "/*.cpuhist"):
-                cpuprof = []
-                for line in open(f):
-                    cpuprof.append([float(v) for v in line.strip().split()])
-                output = f.rsplit('.', 1)[0] + os.path.basename(d)
-                output += "." + terminaltype
+                cpuprof = [[float(v) for v in line.strip().split()] for line in open(f)]
+                output = f.rsplit('.', 1)[0] + os.path.basename(d) + "." + terminaltype
                 drawcpu.plot_cpuprof(cpuprof, output, terminaltype)
             for f in glob.iglob(dd + "/*.cachehist"):
-                cacheprof = []
-                for line in open(f):
-                    cacheprof.append([float(v) for v in line.strip().split()])
-                output = f.rsplit('.', 1)[0] + os.path.basename(d) + "cache"
-                output += "." + terminaltype
+                cacheprof = [[float(v) for v in line.strip().split()] for line in open(f)]
+                output = f.rsplit('.', 1)[0] + os.path.basename(d) + "cache." + terminaltype
                 drawcachemiss.plot_cachemiss(cacheprof, output, terminaltype)
             for f in glob.iglob(dd + "/trace_*.iocosthist"):
-                iocostprof = []
-                for line in open(f):
-                    iocostprof.append([float(v) for v in line.strip().split()])
+                iocostprof = [[float(v) for v in line.strip().split()] for line in open(f)]
                 output = "{0}iocosthist.{1}".format(outprefix, terminaltype)
                 drawiocost.plot_iocostprof(iocostprof, output, terminaltype)
             if reliddict:
@@ -75,32 +65,36 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
 class workmem_plotter(object):
     def __init__(self, dbpath, terminaltype = "png"):
         self.conn = sqlite3.connect(dbpath)
-        self.gp = gpinit(terminaltype)
-        #self.gp('set terminal epslatex color 11')
-        self.gp.xlabel("working memory [byte]")
-        self.gp('set format x "%.0b%B"')
-        if xlogplot:
-            self.gp('set logscale x 2')
-        self.gp('set grid')
+        self.terminaltype = terminaltype
+        self.plotprefdict = {}
+
+    def init_gnuplot(self):
+        gp = gpinit(self.terminaltype)
+        #gp('set terminal epslatex color 11')
+        gp.xlabel("working memory [byte]")
+        gp('set format x "%.0b%B"')
+        if xlogplot: gp('set logscale x 2')
+        gp('set grid')
         if slide:
             if "eps" == terminaltype:
-                self.gp('set termoption font "Times-Roman,28"')
+                gp('set termoption font "Times-Roman,28"')
                 self.plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
             elif "png" == terminaltype:
-                self.gp('set termoption font "Times-Roman,18"')
+                gp('set termoption font "Times-Roman,18"')
                 self.plotprefdict = {"with_" : "linespoints lw 2"}
         else:
             self.plotprefdict = {"with_" : "linespoints" }
+        return gp
 
     def __del__(self):
-        self.gp.close()
         self.conn.close()
 
     def plot_workmem_exectime(self, output):
-        self.gp('set output "{0}"'.format(output))
-        self.gp.ylabel("Time [s]")
-        self.gp('set yrange [0:*]')
-        self.gp('set key right top')
+        gp = self.init_gnuplot()
+        gp('set output "{0}"'.format(output))
+        gp.ylabel("Time [s]")
+        gp('set yrange [0:*]')
+        gp('set key right top')
         nrow = self.conn.execute("select count(*) from iotrace").fetchone()[0]
         gds = []
         query = ("select workmem, avg(exectime) from measurement "
@@ -120,17 +114,18 @@ class workmem_plotter(object):
                      "from measurement, iotrace where measurement.id = iotrace.id "
                      "group by workmem order by workmem")
             gds.extend(query2data(self.conn, query, title = "CPU cost", **self.plotprefdict))
-        self.gp.plot(*gds)
+        gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
+        gp.close()
 
     def plot_workmem_io(self, output):
+        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from io").fetchone()[0]
-        if not nrow:
-            return
-        self.gp('set output "{0}"'.format(output))
-        self.gp.ylabel("Total I/O size [MB]")
-        self.gp('set yrange [0:*]')
-        self.gp('set key right center')
+        if not nrow: return
+        gp('set output "{0}"'.format(output))
+        gp.ylabel("Total I/O size [MB]")
+        gp('set yrange [0:*]')
+        gp('set key right center')
         query = ("select workmem, avg({y}) from measurement, io "
                  "where measurement.id = io.id "
                  "group by workmem order by workmem")
@@ -138,17 +133,18 @@ class workmem_plotter(object):
                          title = "Read", **self.plotprefdict)[0]
         gdw = query2data(self.conn, query.format(y = "total_writemb"),
                          title = "Write", **self.plotprefdict)[0]
-        self.gp.plot(gdr, gdw)
+        gp.plot(gdr, gdw)
         sys.stdout.write("output {0}\n".format(output))
+        gp.close()
 
     def plot_workmem_iocount(self, output):
+        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from iotrace").fetchone()[0]
-        if not nrow:
-            return
-        self.gp('set output "{0}"'.format(output))
-        self.gp.ylabel("I/O count")
-        self.gp('set yrange[0:*]')
-        self.gp('set key right center')
+        if not nrow: return
+        gp('set output "{0}"'.format(output))
+        gp.ylabel("I/O count")
+        gp('set yrange[0:*]')
+        gp('set key right center')
         query = ("select workmem, avg({y}) from measurement, iotrace "
                  "where measurement.id = iotrace.id "
                  "group by workmem order by workmem")
@@ -156,18 +152,19 @@ class workmem_plotter(object):
                          title = "Read", **self.plotprefdict)[0]
         gdw = query2data(self.conn, query.format(y = "writeio_count"),
                          title = "Write", **self.plotprefdict)[0]
-        self.gp.plot(gdr, gdw)
+        gp.plot(gdr, gdw)
         sys.stdout.write("output {0}\n".format(output))
+        gp.close()
 
     def plot_workmem_cpuutil(self, output):
+        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cpu").fetchone()[0]
-        if not nrow:
-            return
-        self.gp('set output "{0}"'.format(output))
-        self.gp.ylabel("CPU util [%]")
-        self.gp('set yrange [0:100]')
-        self.gp('set key outside top')
-        self.gp('set style fill pattern 1 border')
+        if not nrow: return
+        gp('set output "{0}"'.format(output))
+        gp.ylabel("CPU util [%]")
+        gp('set yrange [0:100]')
+        gp('set key outside top')
+        gp('set style fill pattern 1 border')
         self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(usr) as usr, avg(sys) as sys, avg(iowait) as iowait, "
                  "avg(irq) as irq, avg(soft) as soft, avg(idle) as idle "
@@ -182,35 +179,30 @@ class workmem_plotter(object):
         piledatas = [[] for i in range(len(keys[1:]))]
         xlist.append(r[0])
         piledatas[0].append(r[1])
-        for i in range(2, len(keys)):
-            piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
+        for i in range(2, len(keys)): piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
         for r in cur:
             xlist.append(r[0])
             piledatas[0].append(r[1])
-            for i in range(2, len(keys)):
-                piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
+            for i in range(2, len(keys)): piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
         gds = []
-        if xlogplot:
-            widthlist = [v / 4 for v in xlist]
-        else:
-            widthlist = [2 ** 20 / 2 for v in xlist]
+        widthlist = [v / 4 for v in xlist] if xlogplot else [2 ** 20 / 2 for v in xlist]
         for k, dat in zip(keys[:0:-1], piledatas[::-1]):
             gds.append(Gnuplot.Data(xlist, dat, widthlist,
                                     title = k,
                                     with_ = 'boxes fs solid border lc rgb "black"'))
-        self.gp.plot(*gds)
+        gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
-        self.conn.row_factory = None
+        gp.close()
 
     def plot_workmem_cputime(self, output):
+        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cpu").fetchone()[0]
-        if not nrow:
-            return
-        self.gp('set output "{0}"'.format(output))
-        self.gp.ylabel("Time [s]")
-        self.gp('set yrange [0:*]')
-        self.gp('set key outside top')
-        self.gp('set style fill pattern 1 border')
+        if not nrow: return
+        gp('set output "{0}"'.format(output))
+        gp('set ylabel "Time [s]" offset 2')
+        gp('set yrange [0:*]')
+        gp('set key inside top left')
+        gp('set style fill pattern 1 border')
         self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(exectime) as exectime, "
                  "avg(usr) / 100 as usr, avg(sys) / 100 as sys, "
@@ -228,48 +220,43 @@ class workmem_plotter(object):
         piledatas = [[] for i in range(len(keys[2:]))]
         xlist.append(r[0])
         piledatas[0].append(r[2])
-        for i in range(3, len(keys)):
-            piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
-        for i in range(len(keys[2:])):
-            piledatas[i][-1] *= r[1]
+        for i in range(3, len(keys)): piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
+        for i in range(len(keys[2:])): piledatas[i][-1] *= r[1]
         for r in cur:
             xlist.append(r[0])
             piledatas[0].append(r[2])
-            for i in range(3, len(keys)):
-                piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
-            for i in range(len(keys[2:])):
-                piledatas[i][-1] *= r[1]
+            for i in range(3, len(keys)): piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
+            for i in range(len(keys[2:])): piledatas[i][-1] *= r[1]
         gds = []
-        if xlogplot:
-            widthlist = [v / 4 for v in xlist]
-        else:
-            widthlist = [2 ** 20 / 2 for v in xlist]
+        widthlist = [v / 4 for v in xlist] if xlogplot else [2 ** 20 / 2 for v in xlist]
+        gp('set xrange [{0}:*]'.format(xlist[0] - widthlist[0] / 2))
         for k, dat in zip(keys[:0:-1], piledatas[::-1]):
             gds.append(Gnuplot.Data(xlist, dat, widthlist,
                                     title = k,
                                     with_ = 'boxes fs solid border lc rgb "black"'))
-        self.gp.plot(*gds)
+        gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 1400], with_ = 'lines lw 2 lc 8'))
+        gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
-        self.conn.row_factory = None
+        gp.close()
 
     def plot_workmem_cache(self, output):
+        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cache").fetchone()[0]
-        if not nrow:
-            return
-        self.gp('set output "{0}"'.format(output))
-        self.gp.ylabel("count")
-        self.gp('set ytics nomirror')
-        self.gp('set y2label "cache miss rate [%]"')
-        self.gp('set yrange[0:*]')
-        self.gp('set y2range [0:100]')
-        self.gp('set y2tic 10')
-        self.gp('set key inside right top')
+        if not nrow: return
+        gp('set output "{0}"'.format(output))
+        gp('set ytics nomirror')
+        gp('set ylabel"count" offset 3')
+        gp('set y2label "cache miss rate [%]" offset -2')
+        gp('set yrange[0:*]')
+        gp('set y2range [0:100]')
+        gp('set y2tic 10')
+        gp('set key inside right top')
         gds = []
         query = ("select workmem, avg({y}) from measurement, cache "
                  "where measurement.id = cache.id "
                  "group by workmem order by workmem")
         gds.extend(query2data(self.conn, query.format(y = "cache_references"),
-                              title = "cache-regerences",
+                              title = "cache-references",
                               axes = "x1y1", **self.plotprefdict))
         gds.extend(query2data(self.conn, query.format(y = "cache_misses"),
                               title = "cache-misses",
@@ -278,8 +265,10 @@ class workmem_plotter(object):
                               query.format(y = "(cast(cache_misses as real) / cache_references) * 100"),
                               title = "cache-miss-rate",
                               axes = "x1y2", **self.plotprefdict))
-        self.gp.plot(*gds)
+        gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 100], axes = "x1y2", with_ = 'lines lw 2 lc 8'))
+        gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
+        gp.close()
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
@@ -308,15 +297,21 @@ if __name__ == "__main__":
 
     xlogplot = True
     wp = workmem_plotter(rootdir + "/spec.db", terminaltype)
+
     output = "{0}/exectime.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_exectime(output)
+
     output = "{0}/io.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_io(output)
+
     output = "{0}/iocount.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_iocount(output)
+
     output = "{0}/cpuutil.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_cpuutil(output)
+
     output = "{0}/cputime.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_cputime(output)
+
     output = "{0}/cache.{1}".format(rootdir, terminaltype)
     wp.plot_workmem_cache(output)
