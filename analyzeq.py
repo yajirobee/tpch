@@ -201,7 +201,7 @@ class workmem_plotter(object):
         gp('set output "{0}"'.format(output))
         gp('set ylabel "Time [s]" offset 2')
         gp('set yrange [0:*]')
-        gp('set key inside top left')
+        gp('set key inside top right')
         gp('set style fill pattern 1 border')
         self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(exectime) as exectime, "
@@ -234,7 +234,8 @@ class workmem_plotter(object):
             gds.append(Gnuplot.Data(xlist, dat, widthlist,
                                     title = k,
                                     with_ = 'boxes fs solid border lc rgb "black"'))
-        gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 1400], with_ = 'lines lw 2 lc 8'))
+        # cache size line
+        # gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 1400], with_ = 'lines lw 2 lc 8'))
         gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
         gp.close()
@@ -247,6 +248,7 @@ class workmem_plotter(object):
         gp('set ytics nomirror')
         gp('set ylabel"count" offset 3')
         gp('set y2label "cache miss rate [%]" offset -2')
+        gp('set grid xtics noytics noy2tics')
         gp('set yrange[0:*]')
         gp('set y2range [0:100]')
         gp('set y2tic 10')
@@ -265,7 +267,9 @@ class workmem_plotter(object):
                               query.format(y = "(cast(cache_misses as real) / cache_references) * 100"),
                               title = "cache-miss-rate",
                               axes = "x1y2", **self.plotprefdict))
-        gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 100], axes = "x1y2", with_ = 'lines lw 2 lc 8'))
+        # cache size line
+        # gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 100],
+        #                         axes = "x1y2", with_ = 'lines lw 2 lc 8'))
         gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
         gp.close()

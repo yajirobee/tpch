@@ -10,6 +10,7 @@ def plot_cachemiss(cacheprof, output, terminaltype = "png"):
     gp('set ytics nomirror')
     gp('set ylabel "count" offset 4')
     gp('set y2label "cache miss rate [%]" offset -2')
+    gp('set grid xtics noytics noy2tics')
     gp('set yrange [0:1.2e+08]')
     gp('set y2range [0:100]')
     gp('set y2tic 10')
@@ -20,7 +21,7 @@ def plot_cachemiss(cacheprof, output, terminaltype = "png"):
         cacheref.append(v[2])
         cachemiss.append(v[3])
         cachemissrate.append((float(v[3]) / v[2]) * 100)
-    plotprefdict = {"with_" : "lines lw 2"}
+    plotprefdict = {"with_" : "lines"}
     gds.append(Gnuplot.Data(xlist, cacheref,
                             title = "cache reference", axes = "x1y1",
                             **plotprefdict))
