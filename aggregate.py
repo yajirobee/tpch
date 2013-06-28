@@ -91,11 +91,11 @@ def proc_directory(directory, devname, corenum):
     sys.stdout.write("processing {0}\n".format(directory))
     match = re.search("workmem(\d+)(k|M|G)B", directory)
     workmem = proc_suffix(int(match.group(1)), match.group(2))
-    sumio, sumcpu, sumiocost = None, None, None
+    sumio, sumcpu, sumiocost, sumcache = None, None, None, None
     dirs = glob.glob(directory + "/*.time")
     if dirs:
         for f in dirs: exectime = float(open(f).readline().strip())
-            #exectime = [float(v) for v in open(f).readline().strip().split()]
+        #for f in dirs: exectime = [float(v) for v in open(f).readline().strip().split()][4]
     else:
         for f in glob.iglob(directory + "/*.res"): exectime = get_exectime(f)
     for f in glob.iglob(directory + "/*.io"): sumio = proc_iofile(f, devname)
@@ -168,7 +168,7 @@ def main(rootdir, devname, corenum):
     for i, vals in enumerate(res):
         query = "insert into {0} values ({1})"
         conn.execute(query.format(maintbl, ','.join('?' * len(maincols))),
-                     (i, vals[0], vals[1]))
+                     (i, vals[0], vals[1][4]))
         if vals[2]:
             vals[2].pop(9) # remove svctm column
             vals[2].insert(0, i)
