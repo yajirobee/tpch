@@ -3,7 +3,7 @@
 import sys, os, glob, re, Gnuplot, sqlite3
 import drawio, drawcpu, drawiocost, drawioref, drawcachemiss
 from profileutils import get_reliddict
-from plotutil import query2data, gpinit
+from plotutil import query2data, query2gds, gpinit
 
 slide = False
 xlogplot = True
@@ -99,21 +99,21 @@ class workmem_plotter(object):
         gds = []
         query = ("select workmem, avg(exectime) from measurement "
                  "group by workmem order by workmem")
-        gds.extend(query2data(self.conn, query, title = "Execution time", **self.plotprefdict))
+        gds.extend(query2gds(self.conn, query, title = "Execution time", **self.plotprefdict))
         if nrow:
             query = ("select workmem, avg({y})/1000000000 from measurement, iotrace "
                      "where measurement.id = iotrace.id "
                      "group by workmem order by workmem")
-            gds.extend(query2data(self.conn, query.format(y = "readio_nsec"),
+            gds.extend(query2gds(self.conn, query.format(y = "readio_nsec"),
                                   title = "Read I/O cost", **self.plotprefdict))
-            gds.extend(query2data(self.conn, query.format(y = "writeio_nsec"),
+            gds.extend(query2gds(self.conn, query.format(y = "writeio_nsec"),
                                   title = "Write I/O cost", **self.plotprefdict))
-            gds.extend(query2data(self.conn, query.format(y = "readio_nsec + writeio_nsec"),
+            gds.extend(query2gds(self.conn, query.format(y = "readio_nsec + writeio_nsec"),
                                   title = "I/O cost", **self.plotprefdict))
             query = ("select workmem, avg(exectime - (readio_nsec + writeio_nsec) / 1000000000) "
                      "from measurement, iotrace where measurement.id = iotrace.id "
                      "group by workmem order by workmem")
-            gds.extend(query2data(self.conn, query, title = "CPU cost", **self.plotprefdict))
+            gds.extend(query2gds(self.conn, query, title = "CPU cost", **self.plotprefdict))
         gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
         gp.close()
@@ -129,9 +129,9 @@ class workmem_plotter(object):
         query = ("select workmem, avg({y}) from measurement, io "
                  "where measurement.id = io.id "
                  "group by workmem order by workmem")
-        gdr = query2data(self.conn, query.format(y = "total_readmb"),
+        gdr = query2gds(self.conn, query.format(y = "total_readmb"),
                          title = "Read", **self.plotprefdict)[0]
-        gdw = query2data(self.conn, query.format(y = "total_writemb"),
+        gdw = query2gds(self.conn, query.format(y = "total_writemb"),
                          title = "Write", **self.plotprefdict)[0]
         gp.plot(gdr, gdw)
         sys.stdout.write("output {0}\n".format(output))
@@ -148,10 +148,10 @@ class workmem_plotter(object):
         query = ("select workmem, avg({y}) from measurement, iotrace "
                  "where measurement.id = iotrace.id "
                  "group by workmem order by workmem")
-        gdr = query2data(self.conn, query.format(y = "readio_count"),
-                         title = "Read", **self.plotprefdict)[0]
-        gdw = query2data(self.conn, query.format(y = "writeio_count"),
-                         title = "Write", **self.plotprefdict)[0]
+        gdr = query2gds(self.conn, query.format(y = "readio_count"),
+                        title = "Read", **self.plotprefdict)[0]
+        gdw = query2gds(self.conn, query.format(y = "writeio_count"),
+                        title = "Write", **self.plotprefdict)[0]
         gp.plot(gdr, gdw)
         sys.stdout.write("output {0}\n".format(output))
         gp.close()
@@ -252,21 +252,21 @@ class workmem_plotter(object):
         gp('set yrange[0:*]')
         gp('set y2range [0:100]')
         gp('set y2tic 10')
-        gp('set key inside right top')
+        gp('set key inside right bottom')
         gds = []
         query = ("select workmem, avg({y}) from measurement, cache "
                  "where measurement.id = cache.id "
                  "group by workmem order by workmem")
-        gds.extend(query2data(self.conn, query.format(y = "cache_references"),
-                              title = "cache-references",
-                              axes = "x1y1", **self.plotprefdict))
-        gds.extend(query2data(self.conn, query.format(y = "cache_misses"),
-                              title = "cache-misses",
-                              axes = "x1y1", **self.plotprefdict))
-        gds.extend(query2data(self.conn,
-                              query.format(y = "(cast(cache_misses as real) / cache_references) * 100"),
-                              title = "cache-miss-rate",
-                              axes = "x1y2", **self.plotprefdict))
+        gds.extend(query2gds(self.conn, query.format(y = "cache_references"),
+                             title = "cache-references",
+                             axes = "x1y1", **self.plotprefdict))
+        gds.extend(query2gds(self.conn, query.format(y = "cache_misses"),
+                             title = "cache-misses",
+                             axes = "x1y1", **self.plotprefdict))
+        gds.extend(query2gds(self.conn,
+                             query.format(y = "(cast(cache_misses as real) / cache_references) * 100"),
+                             title = "cache-miss-rate",
+                             axes = "x1y2", **self.plotprefdict))
         # cache size line
         # gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 100],
         #                         axes = "x1y2", with_ = 'lines lw 2 lc 8'))
