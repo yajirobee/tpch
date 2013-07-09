@@ -168,7 +168,7 @@ def main(rootdir, devname, corenum):
     for i, vals in enumerate(res):
         query = "insert into {0} values ({1})"
         conn.execute(query.format(maintbl, ','.join('?' * len(maincols))),
-                     (i, vals[0], vals[1][4]))
+                     (i, vals[0], vals[1]))
         if vals[2]:
             vals[2].pop(9) # remove svctm column
             vals[2].insert(0, i)
