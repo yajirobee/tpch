@@ -33,6 +33,8 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
             outprefix = dd + "/default"
             for f in glob.iglob(dd + "/*.res"):
                 outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
+            for f in glob.iglob(dd + "/*.time"):
+                outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
             for f in glob.iglob(dd + "/*.iohist"):
                 ioprof = [[float(v) for v in line.strip().split()] for line in open(f)]
                 drawio.plot_ioprof(ioprof, outprefix, terminaltype)
