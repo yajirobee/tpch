@@ -149,7 +149,11 @@ def get_iocostprof(fpath):
         prevblock = int(val[3], 16)
     return iohist
 
-def get_cacheprof(fpath, corenum):
+def get_cacheprof(fpath, corenum = None):
+    if corenum: return get_cachecoreprof(fpath, corenum)
+    else: return get_cacheaggprof(fpath)
+
+def get_cachecoreprof(fpath, corenum):
     cachehist = []
     t = 0
     interval = 5
@@ -162,6 +166,23 @@ def get_cacheprof(fpath, corenum):
             if "cycles" == vals[2]: cycles = int(vals[1])
             elif "cache-references" == vals[2]: cacheref = int(vals[1])
             elif "cache-misses" == vals[2]: cachemiss = int(vals[1])
+        elif "time" == vals[2] and "elapsed" == vals[3]:
+            cachehist.append((t, cycles, cacheref, cachemiss))
+            t += interval
+            cycles, cacheref, cachemiss = 0, 0, 0
+    return cachehist
+
+def get_cacheaggprof(fpath):
+    cachehist = []
+    t = 0
+    interval = 5
+    cycles, cacheref, cachemiss = 0, 0, 0
+    for line in open(fpath):
+        vals = line.strip().split()
+        if not vals or len(vals) < 2: continue
+        elif "cycles" == vals[1]: cycles = int(vals[0])
+        elif "cache-references" == vals[1]: cacheref = int(vals[0])
+        elif "cache-misses" == vals[1]: cachemiss = int(vals[0])
         elif "time" == vals[2] and "elapsed" == vals[3]:
             cachehist.append((t, cycles, cacheref, cachemiss))
             t += interval
