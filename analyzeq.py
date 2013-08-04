@@ -38,7 +38,8 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
                 outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
             for f in glob.iglob(dd + "/*.iohist"):
                 ioprof = [[float(v) for v in line.strip().split()] for line in open(f)]
-                drawio.plot_ioprof(ioprof, outprefix, terminaltype)
+                outpf = f.rsplit('.', 1)[0] + os.path.basename(d)
+                drawio.plot_ioprof(ioprof, outpf, terminaltype)
             for f in glob.iglob(dd + "/*.cpuhist"):
                 cpuprof = [[float(v) for v in line.strip().split()] for line in open(f)]
                 output = f.rsplit('.', 1)[0] + os.path.basename(d) + "." + terminaltype
@@ -129,12 +130,12 @@ class workmem_plotter(object):
         gp.ylabel("Total I/O size [MB]")
         gp('set yrange [0:*]')
         gp('set key right center')
-        query = ("select workmem, avg({y}) from measurement, io "
+        query = ("select workmem, avg({y} * exectime) from measurement, io "
                  "where measurement.id = io.id "
                  "group by workmem order by workmem")
-        gdr = query2gds(self.conn, query.format(y = "total_readmb"),
+        gdr = query2gds(self.conn, query.format(y = "average_readmb"),
                          title = "Read", **self.plotprefdict)[0]
-        gdw = query2gds(self.conn, query.format(y = "total_writemb"),
+        gdw = query2gds(self.conn, query.format(y = "average_writemb"),
                          title = "Write", **self.plotprefdict)[0]
         gp.plot(gdr, gdw)
         sys.stdout.write("output {0}\n".format(output))
