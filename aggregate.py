@@ -29,45 +29,63 @@ def get_exectime(resfile):
                 i += 1
     return None
 
-def proc_iofile(iofile, devname):
-    ioprof = get_ioprof(iofile, devname)
-    output = "{0}.iohist".format(iofile.rsplit('.', 1)[0])
-    with open(output, "w") as fo:
-        for line in ioprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
-    ave = None
-    if ioprof:
-        ave = np.array(ioprof[0])
-        for arr in ioprof[1:]: ave += arr
-        for i in (0, 1, 6, 7, 8, 9, 10): ave[i] /= len(ioprof)
-        ave = ave.tolist()
-    return ave
+def proc_iofile(iofile, devnames):
+    ioprofdict = get_ioprof(iofile)
+    average = []
+    for dev in devnames:
+        ioprof = ioprofdict.get(dev)
+        if not ioprof: continue
+        output = "{0}_{1}.iohist".format(iofile.rsplit('.', 1)[0], dev)
+        with open(output, "w") as fo:
+            for line in ioprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
+        ave = np.add.reduce(ioprof)
+        ave /= len(ioprof)
+        average.append(ave)
+    if average:
+        l = len(average)
+        average = np.add.reduce(average)
+        for i in (7, 8, 9, 10): average[i] /= l
+    return average.tolist() if average else None
 
-def proc_cpufile(cpufile, corenum):
-    cpuprof = get_cpuprof(cpufile, corenum)
-    output = "{0}_core{1}.cpuhist".format(cpufile.rsplit('.', 1)[0], corenum)
-    with open(output, "w") as fo:
-        for line in cpuprof:
-            fo.write('\t'.join([str(v) for v in line]) + "\n")
-    ave = None
-    if cpuprof:
-        ave = np.array(cpuprof[0])
-        for arr in cpuprof[1:]: ave += arr
+def proc_cpufile(cpufile, corenums):
+    cpuprofdict = get_cpuprof(cpufile)
+    average = []
+    for core in corenums:
+        cpuprof = cpuprofdict.get(core)
+        if not cpuprof: continue
+        output = "{0}_core{1}.cpuhist".format(cpufile.rsplit('.', 1)[0], core)
+        with open(output, "w") as fo:
+            for line in cpuprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
+        ave = np.add.reduce(ioprof)
         ave /= len(cpuprof)
-        ave = ave.tolist()
-    return ave
+        average.append(ave)
+    if average:
+        l = len(average)
+        average = np.add.reduce(average)
+    return average.tolist() if average else None
 
-def proc_statfile(statfile, corenum):
-    cacheprof = get_cacheprof(statfile, corenum)
-    output = "{0}_core{1}.cachehist".format(statfile.rsplit('.' , 1)[0], corenum)
-    with open(output, "w") as fo:
-        for line in cacheprof:
-            fo.write('\t'.join([str(v) for v in line]) + "\n")
-    cycle, cacheref, cachemiss = [], [], []
-    for v in cacheprof:
-        cycle.append(v[1])
-        cacheref.append(v[2])
-        cachemiss.append(v[3])
-    return [sum(cycle), sum(cacheref), sum(cachemiss)]
+def proc_statfile(statfile, corenums):
+    interval = 5
+    if corenums:
+        cacheprofdict = get_cachecoreprof(statfile, interval)
+        total = []
+        for core in corenums:
+            cacheprof = cacheprofdict.get(core)
+            if not cacheprof: continue
+            output = "{0}_core{1}.cachehist".format(statfile.rsplit('.' , 1)[0], core)
+            with open(output, "w") as fo:
+                for line in cacheprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
+            s = np.add.reduce([vals[1:] for vals in cacheprof])
+            total.append(s)
+        if total:
+            total = np.add.reduce(total)
+    else:
+        cacheprof = get_cacheaggprof(statfile, interval)
+        output = "{0}.cachehist".format(statfile.rsplit('.' , 1)[0])
+        with open(output, "w") as fo:
+            for line in cacheprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
+        total = np.add.reduce(vals[1:] for vals in cacheprof)
+    return total.tolist() if total else None
 
 def proc_tracefile(iotracefile):
     iocostprof = get_iocostprof(iotracefile)
@@ -82,12 +100,11 @@ def proc_tracefile(iotracefile):
     fr.close()
     total = None
     if iocostprof:
-        total = np.array(iocostprof[0][:-1])
-        for arr in iocostprof[1:]: total += arr[:-1]
+        total = np.add.reduce([vals[:-1] for vals in iocostprof])
         total = total.tolist()
     return total
 
-def proc_directory(directory, devname, corenum):
+def proc_directory(directory, devnames, corenums):
     sys.stdout.write("processing {0}\n".format(directory))
     match = re.search("workmem(\d+)(k|M|G)B", directory)
     workmem = proc_suffix(int(match.group(1)), match.group(2))
@@ -98,9 +115,9 @@ def proc_directory(directory, devname, corenum):
         #for f in dirs: exectime = [float(v) for v in open(f).readline().strip().split()][4]
     else:
         for f in glob.iglob(directory + "/*.res"): exectime = get_exectime(f)
-    for f in glob.iglob(directory + "/*.io"): sumio = proc_iofile(f, devname)
-    for f in glob.iglob(directory + "/*.cpu"): sumcpu = proc_cpufile(f, corenum)
-    for f in glob.iglob(directory + "/*.perf"): sumcache = proc_statfile(f, corenum)
+    for f in glob.iglob(directory + "/*.io"): sumio = proc_iofile(f, devnames)
+    for f in glob.iglob(directory + "/*.cpu"): sumcpu = proc_cpufile(f, corenums)
+    for f in glob.iglob(directory + "/*.perf"): sumcache = proc_statfile(f, corenums)
     dirs = glob.glob(directory + "/trace_*.log")
     if dirs:
         f = max(dirs, key = os.path.getsize)
@@ -192,11 +209,11 @@ def main(rootdir, devname, corenum):
 if __name__ == "__main__":
     if len(sys.argv) == 4:
         rootdir = sys.argv[1]
-        devname = sys.argv[2]
-        corenum = sys.argv[3]
+        devnames = sys.argv[2].split(',')
+        corenums = sys.argv[3].split(',')
     else:
         sys.stderr.write(
-            "Usage : {0} rootdir devname corenum\n".format(sys.argv[0]))
+            "Usage : {0} rootdir devnames corenums\n".format(sys.argv[0]))
         sys.exit(0)
 
-    main(rootdir, devname, corenum)
+    main(rootdir, devnames, corenums)

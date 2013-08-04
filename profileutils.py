@@ -41,21 +41,45 @@ def get_normioprof(fpath, devname):
             ioprof.append(tmp)
     return ioprof
 
-def get_ioprof(fpath, devname):
+def get_ioprof_old(fpath, devname):
     "get histgram of IO profile"
     if devname == "md0": return get_mdioprof(fpath, devname)
     else: return get_normioprof(fpath, devname)
 
-def get_cpuprof(fpath, core):
+def get_cpuprof_old(fpath, core):
     "get histgram of a CPU core usage"
     cpuprof = []
     for line in open(fpath):
         val = line.split()
-        if not val:
-            continue
+        if not val: continue
         elif val[1] == core:
             cpuprof.append([float(v) for v in val[2:]])
     return cpuprof
+
+def get_ioprof(srcpath):
+    "get histgram of IO profile"
+    ioprofdict = {}
+    for line in open(srcpath):
+        val = line.split()
+        if not val or ":" in val[0] or val[0].isdigit(): continue
+        else:
+            if val[0] not in ioprofdict: ioprofdict[val[0]] = []
+            tmp = [float(v) for v in val[1:]]
+            tmp[4] *= 512 * (10 ** -6) # convert read throughput from sec/s to MB/s
+            tmp[5] *= 512 * (10 ** -6) # convert write throughput from sec/s to MB/s
+            ioprofdict[val[0]].append(tmp)
+    return ioprofdict
+
+def get_cpuprof(srcpath):
+    "get histgram of a CPU core usage"
+    cpuprofdict = {}
+    for line in open(srcpath):
+        val = line.split()
+        if not val: continue
+        elif val[1].isdigit() or "all" == val[1]:
+            if val[1] not in cpuprofdict: cpuprofdict[val[1]] = []
+            cpuprofdict[val[1]].append([float(v) for v in val[2:]])
+    return cpuprofdict
 
 def get_allcpuprof(fpath, col):
     "get histgram of one column of all CPU cores usage"
@@ -111,12 +135,12 @@ def get_tblrefprof(iodumpfile):
                 elapsed = time
     return refhist
 
-def get_iocostprof(fpath):
+def get_iocostprof(srcpath):
     readiocount, writeiocount, readiotime, writeiotime, readioref = range(5)
     iohist = [[0, 0, 0, 0, {}]]
     interval = 10 ** 9
     prevstate = None
-    for line in open(fpath):
+    for line in open(srcpath):
         val = line.strip().split()
         if not val:
             continue
@@ -149,35 +173,36 @@ def get_iocostprof(fpath):
         prevblock = int(val[3], 16)
     return iohist
 
-def get_cacheprof(fpath, corenum = None):
-    if corenum: return get_cachecoreprof(fpath, corenum)
-    else: return get_cacheaggprof(fpath)
-
-def get_cachecoreprof(fpath, corenum):
-    cachehist = []
+def get_cachecoreprof(srcpath, interval):
+    cacheprofdict = {}
+    corepat = re.compile("CPU(\d+)")
     t = 0
-    interval = 5
-    cycles, cacheref, cachemiss = 0, 0, 0
-    corepat = "CPU{0}".format(corenum)
-    for line in open(fpath):
+    tmpdict = {}
+    for line in open(srcpath):
         vals = line.strip().split()
         if not vals or len(vals) < 3: continue
-        elif corepat == vals[0]:
-            if "cycles" == vals[2]: cycles = int(vals[1])
-            elif "cache-references" == vals[2]: cacheref = int(vals[1])
-            elif "cache-misses" == vals[2]: cachemiss = int(vals[1])
+        match = corepat.match(vals[0])
+        if match:
+            corenum = match.group(1)
+            if corenum not in tmpdict: tmpdict[corenum] = [t, -1, -1, -1]
+            for i, name in enumerate("cycles", "cache-references", "cache-misses"):
+                if name == vals[2]:
+                    tmpdict[corenum][i + 1] = int(vals[1]) if vals[1].isdigit() else -1
+                    break
         elif "time" == vals[2] and "elapsed" == vals[3]:
-            cachehist.append((t, cycles, cacheref, cachemiss))
+            if tmpdict:
+                for k, v in tmpdict.items():
+                    if k not in cacheprofdict: cacheprofdict[k] = []
+                    cacheprofdict[k].append(tuple(v))
             t += interval
-            cycles, cacheref, cachemiss = 0, 0, 0
-    return cachehist
+            tmpdict = {}
+    return cacheprofdict
 
-def get_cacheaggprof(fpath):
-    cachehist = []
+def get_cacheaggprof(srcpath, interval):
+    cacheprof = []
     t = 0
-    interval = 5
     cycles, cacheref, cachemiss = 0, 0, 0
-    for line in open(fpath):
+    for line in open(srcpath):
         vals = line.strip().split()
         if not vals or len(vals) < 2: continue
         elif "cycles" == vals[1]: cycles = int(vals[0])
@@ -187,4 +212,4 @@ def get_cacheaggprof(fpath):
             cachehist.append((t, cycles, cacheref, cachemiss))
             t += interval
             cycles, cacheref, cachemiss = 0, 0, 0
-    return cachehist
+    return cacheprof
