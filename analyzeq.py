@@ -199,6 +199,7 @@ class workmem_plotter(object):
         gp.close()
 
     def plot_workmem_cputime(self, output):
+        ncore = 1
         gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cpu").fetchone()[0]
         if not nrow: return
@@ -209,13 +210,14 @@ class workmem_plotter(object):
         gp('set style fill pattern 1 border')
         self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(exectime) as exectime, "
-                 "avg(usr) / 100 as usr, avg(sys) / 100 as sys, "
-                 "avg(iowait) / 100 as iowait, "
-                 #"avg(irq) / 100 as irq, avg(soft) / 100 as soft, "
-                 "avg(idle) / 100 as idle "
+                 "avg(usr) / {maxper} as usr, avg(sys) / {maxper} as sys, "
+                 "avg(iowait) / {maxper} as iowait, "
+                 #"avg(irq) / {maxper} as irq, avg(soft) / {maxper} as soft, "
+                 "avg(idle) / {maxper} as idle "
                  "from measurement, cpu "
                  "where measurement.id = cpu.id "
-                 "group by workmem order by workmem")
+                 "group by workmem order by workmem"
+                 .format(maxper = 100 * ncore))
         cur = self.conn.cursor()
         cur.execute(query)
         r = cur.fetchone()
