@@ -3,7 +3,7 @@
 import sys, os, glob, re, multiprocessing, sqlite3
 import numpy as np
 import drawio, drawcpu
-from profileutils import get_ioprof, get_cpuprof, get_iocostprof, get_cacheprof
+from profileutils import get_ioprof, get_cpuprof, get_iocostprof, get_cachecoreprof, get_cacheaggprof
 
 def proc_suffix(val, prefix):
     if 'k' == prefix: val *= 2 ** 10
@@ -45,7 +45,7 @@ def proc_iofile(iofile, devnames):
         l = len(average)
         average = np.add.reduce(average)
         for i in (7, 8, 9, 10): average[i] /= l
-    return average.tolist() if average else None
+    return average.tolist() if average != [] else None
 
 def proc_cpufile(cpufile, corenums):
     cpuprofdict = get_cpuprof(cpufile)
@@ -56,13 +56,13 @@ def proc_cpufile(cpufile, corenums):
         output = "{0}_core{1}.cpuhist".format(cpufile.rsplit('.', 1)[0], core)
         with open(output, "w") as fo:
             for line in cpuprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
-        ave = np.add.reduce(ioprof)
+        ave = np.add.reduce(cpuprof)
         ave /= len(cpuprof)
         average.append(ave)
     if average:
         l = len(average)
         average = np.add.reduce(average)
-    return average.tolist() if average else None
+    return average.tolist() if average != [] else None
 
 def proc_statfile(statfile, corenums):
     interval = 5
@@ -79,13 +79,15 @@ def proc_statfile(statfile, corenums):
             total.append(s)
         if total:
             total = np.add.reduce(total)
+        return total.tolist() if total != [] else None
     else:
         cacheprof = get_cacheaggprof(statfile, interval)
+        if not cacheprof: return None
         output = "{0}.cachehist".format(statfile.rsplit('.' , 1)[0])
         with open(output, "w") as fo:
             for line in cacheprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
         total = np.add.reduce(vals[1:] for vals in cacheprof)
-    return total.tolist() if total else None
+        return total.tolist()
 
 def proc_tracefile(iotracefile):
     iocostprof = get_iocostprof(iotracefile)
@@ -127,14 +129,17 @@ def proc_directory(directory, devnames, corenums):
 def multiprocessing_helper(args):
     return args[0](*args[1:])
 
-def main(rootdir, devname, corenum):
+def main(rootdir, devnames, corenums):
     ncore = multiprocessing.cpu_count() / 2
     pool = multiprocessing.Pool(ncore)
     dirs = []
     for d in glob.iglob(rootdir + "/workmem*"):
         dirs.extend(glob.glob(d + "/[0-9]*"))
-    argslist = [(proc_directory, d, devname, corenum) for d in dirs]
+    argslist = [(proc_directory, d, devnames, corenums) for d in dirs]
     res = pool.map(multiprocessing_helper, argslist)
+
+    # for d in dirs:
+    #     proc_directory(d, devnames, corenums)
 
     conn = sqlite3.connect(rootdir + "/spec.db")
     maintbl = "measurement"

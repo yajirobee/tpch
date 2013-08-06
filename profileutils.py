@@ -59,15 +59,18 @@ def get_cpuprof_old(fpath, core):
 def get_ioprof(srcpath):
     "get histgram of IO profile"
     ioprofdict = {}
-    for line in open(srcpath):
+    fo = open(srcpath)
+    fo.readline()
+    for line in fo:
         val = line.split()
-        if not val or ":" in val[0] or val[0].isdigit(): continue
+        if not val or ':' in val[0] or '.' in val[0]: continue
         else:
             if val[0] not in ioprofdict: ioprofdict[val[0]] = []
             tmp = [float(v) for v in val[1:]]
             tmp[4] *= 512 * (10 ** -6) # convert read throughput from sec/s to MB/s
             tmp[5] *= 512 * (10 ** -6) # convert write throughput from sec/s to MB/s
             ioprofdict[val[0]].append(tmp)
+    fo.close()
     return ioprofdict
 
 def get_cpuprof(srcpath):
@@ -185,7 +188,7 @@ def get_cachecoreprof(srcpath, interval):
         if match:
             corenum = match.group(1)
             if corenum not in tmpdict: tmpdict[corenum] = [t, -1, -1, -1]
-            for i, name in enumerate("cycles", "cache-references", "cache-misses"):
+            for i, name in enumerate(("cycles", "cache-references", "cache-misses")):
                 if name == vals[2]:
                     tmpdict[corenum][i + 1] = int(vals[1]) if vals[1].isdigit() else -1
                     break
