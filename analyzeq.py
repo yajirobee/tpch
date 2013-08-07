@@ -38,11 +38,11 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
                 outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
             for f in glob.iglob(dd + "/*.iohist"):
                 ioprof = [[float(v) for v in line.strip().split()] for line in open(f)]
-                outpf = f.rsplit('.', 1)[0] + os.path.basename(d)
+                outpf = f.rsplit('.', 1)[0] + "_" + os.path.basename(d)
                 drawio.plot_ioprof(ioprof, outpf, terminaltype)
             for f in glob.iglob(dd + "/*.cpuhist"):
                 cpuprof = [[float(v) for v in line.strip().split()] for line in open(f)]
-                output = f.rsplit('.', 1)[0] + os.path.basename(d) + "." + terminaltype
+                output = f.rsplit('.', 1)[0] + "_" + os.path.basename(d) + "." + terminaltype
                 drawcpu.plot_cpuprof(cpuprof, output, terminaltype)
             for f in glob.iglob(dd + "/*.cachehist"):
                 cacheprof = [[float(v) for v in line.strip().split()] for line in open(f)]
