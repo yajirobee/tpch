@@ -65,7 +65,7 @@ def proc_cpufile(cpufile, corenums):
     return average.tolist() if average != [] else None
 
 def proc_statfile(statfile, corenums):
-    interval = 5
+    interval = 1
     if corenums:
         cacheprofdict = get_cachecoreprof(statfile, interval)
         total = []
@@ -176,10 +176,15 @@ def main(rootdir, devnames, corenums):
                    "readio_nsec real",
                    "writeio_nsec real")
     cachetbl = "cache"
+    # cachecols = ("id integer",
+    #              "cycles integer",
+    #              "cache_references integer",
+    #              "cache_misses integer")
     cachecols = ("id integer",
-                 "cycles integer",
-                 "cache_references integer",
-                 "cache_misses integer")
+                 "all_cache_references integer",
+                 "L1D_cache_misses integer",
+                 "L2_cache_misses integer",
+                 "L3_cache_misses integer")
     tbldict = {maintbl : maincols,
                iostattbl : iostatcols,
                cputbl : cpucols,

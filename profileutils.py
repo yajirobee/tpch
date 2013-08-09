@@ -176,8 +176,9 @@ def get_iocostprof(srcpath):
         prevblock = int(val[3], 16)
     return iohist
 
-def get_cachecoreprof(srcpath, interval):
-    cacheprofdict = {}
+def get_cachecoreprof_old(srcpath, interval):
+    selects = ["cycles", "cache-references", "cache-misses"]
+    cacheprofdict = {"schema": tuple(["time"] + selects)}
     corepat = re.compile("CPU(\d+)")
     t = 0
     tmpdict = {}
@@ -187,16 +188,46 @@ def get_cachecoreprof(srcpath, interval):
         match = corepat.match(vals[0])
         if match:
             corenum = match.group(1)
-            if corenum not in tmpdict: tmpdict[corenum] = [t, -1, -1, -1]
-            for i, name in enumerate(("cycles", "cache-references", "cache-misses")):
-                if name == vals[2]:
-                    tmpdict[corenum][i + 1] = int(vals[1]) if vals[1].isdigit() else -1
-                    break
+            if corenum not in tmpdict: tmpdict[corenum] = [t] +  [-1 for v in selects]
+            if vals[2] in selects:
+                idx = selects.index(vals[2]) + 1
+                tmpdict[corenum][idx] = int(vals[1]) if vals[1].isdigit() else -1
         elif "time" == vals[2] and "elapsed" == vals[3]:
             if tmpdict:
                 for k, v in tmpdict.items():
                     if k not in cacheprofdict: cacheprofdict[k] = []
                     cacheprofdict[k].append(tuple(v))
+            t += interval
+            tmpdict = {}
+    return cacheprofdict
+
+def get_cachecoreprof(srcpath, interval):
+    selects = ["r1cb", "r40cb", "r2cb", "r4cb", "r8cb", "r10cb"]
+    cols = ["all_cache_references", "L1D_cache_misses", "L2_cache_misses", "L3_cache_misses"]
+    cacheprofdict = {"schema": tuple(["time"] + cols)}
+    corepat = re.compile("CPU(\d+)")
+    t = 0
+    tmpdict = {}
+    for line in open(srcpath):
+        vals = line.strip().split()
+        if not vals or len(vals) < 3: continue
+        match = corepat.match(vals[0])
+        if match:
+            corenum = match.group(1)
+            if corenum not in tmpdict: tmpdict[corenum] = [-1 for v in selects]
+            if vals[2] in selects:
+                idx = selects.index(vals[2])
+                tmpdict[corenum][idx] = int(vals[1]) if vals[1].isdigit() else -1
+        elif "time" == vals[2] and "elapsed" == vals[3]:
+            if tmpdict:
+                for k, v in tmpdict.items():
+                    if k not in cacheprofdict: cacheprofdict[k] = []
+                    vals = [t]
+                    vals.append(sum(v)) # all cache ref
+                    vals.append(sum(v[1:])) # L1D cache miss
+                    vals.append(sum(v[3:])) # L2 cache miss
+                    vals.append(sum(v[4:])) # L3 cache miss
+                    cacheprofdict[k].append(tuple(vals))
             t += interval
             tmpdict = {}
     return cacheprofdict
