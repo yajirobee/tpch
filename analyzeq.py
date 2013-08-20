@@ -4,7 +4,7 @@ import sys, os, glob, re, Gnuplot, sqlite3
 import drawio, drawcpu, drawiocost, drawioref, drawcachemiss
 import numpy as np
 from profileutils import get_reliddict
-from plotutil import query2data, query2gds, gpinit
+from plotutil import query2data, query2gds, gpinit, ceiltop
 
 slide = False
 xlogplot = True
@@ -71,7 +71,6 @@ class workmem_plotter(object):
         self.conn = sqlite3.connect(dbpath)
         self.terminaltype = terminaltype
         self.plotprefdict = {}
-        self.ncore = 1
 
     def init_gnuplot(self):
         gp = gpinit(self.terminaltype)
@@ -162,12 +161,15 @@ class workmem_plotter(object):
         gp.close()
 
     def plot_workmem_cpuutil(self, output):
-        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cpu").fetchone()[0]
         if not nrow: return
+        gp = self.init_gnuplot()
+        query = "select max(usr + sys + iowait + idle) from cpu"
+        maxper = int(self.conn.execute(query).fetchone()[0])
+        maxper = int(ceiltop(maxper))
         gp('set output "{0}"'.format(output))
         gp.ylabel("CPU util [%]")
-        gp('set yrange [0:{0}]'.format(self.ncore * 100))
+        gp('set yrange [0:{0}]'.format(maxper))
         gp('set key outside top')
         gp('set style fill pattern 1 border')
         self.conn.row_factory = sqlite3.Row
@@ -200,9 +202,12 @@ class workmem_plotter(object):
         gp.close()
 
     def plot_workmem_cputime(self, output):
-        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cpu").fetchone()[0]
         if not nrow: return
+        gp = self.init_gnuplot()
+        query = "select max(usr + sys + iowait + idle) from cpu"
+        maxper = int(self.conn.execute(query).fetchone()[0])
+        maxper = int(ceiltop(maxper))
         gp('set output "{0}"'.format(output))
         gp('set ylabel "Time [s]" offset 2')
         gp('set yrange [0:*]')
@@ -217,7 +222,7 @@ class workmem_plotter(object):
                  "from measurement, cpu "
                  "where measurement.id = cpu.id "
                  "group by workmem order by workmem"
-                 .format(maxper = 100 * self.ncore))
+                 .format(maxper = maxper))
         cur = self.conn.cursor()
         cur.execute(query)
         r = cur.fetchone()
@@ -247,9 +252,9 @@ class workmem_plotter(object):
         gp.close()
 
     def plot_workmem_cache(self, output):
-        gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cache").fetchone()[0]
         if not nrow: return
+        gp = self.init_gnuplot()
         gp('set output "{0}"'.format(output))
         gp('set ytics nomirror')
         gp('set ylabel"count" offset 3')
