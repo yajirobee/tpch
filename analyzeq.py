@@ -71,11 +71,12 @@ class workmem_plotter(object):
         self.conn = sqlite3.connect(dbpath)
         self.terminaltype = terminaltype
         self.plotprefdict = {}
+        self.ncore = 1
 
     def init_gnuplot(self):
         gp = gpinit(self.terminaltype)
         #gp('set terminal epslatex color 11')
-        gp.xlabel("working memory [byte]")
+        gp.xlabel("work\_mem [byte]")
         gp('set format x "%.0b%B"')
         if xlogplot: gp('set logscale x 2')
         gp('set grid')
@@ -166,7 +167,7 @@ class workmem_plotter(object):
         if not nrow: return
         gp('set output "{0}"'.format(output))
         gp.ylabel("CPU util [%]")
-        gp('set yrange [0:100]')
+        gp('set yrange [0:{0}]'.format(self.ncore * 100))
         gp('set key outside top')
         gp('set style fill pattern 1 border')
         self.conn.row_factory = sqlite3.Row
@@ -199,14 +200,13 @@ class workmem_plotter(object):
         gp.close()
 
     def plot_workmem_cputime(self, output):
-        ncore = 1
         gp = self.init_gnuplot()
         nrow = self.conn.execute("select count(*) from cpu").fetchone()[0]
         if not nrow: return
         gp('set output "{0}"'.format(output))
         gp('set ylabel "Time [s]" offset 2')
         gp('set yrange [0:*]')
-        gp('set key inside top right')
+        gp('set key inside top left')
         gp('set style fill pattern 1 border')
         self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(exectime) as exectime, "
@@ -217,7 +217,7 @@ class workmem_plotter(object):
                  "from measurement, cpu "
                  "where measurement.id = cpu.id "
                  "group by workmem order by workmem"
-                 .format(maxper = 100 * ncore))
+                 .format(maxper = 100 * self.ncore))
         cur = self.conn.cursor()
         cur.execute(query)
         r = cur.fetchone()

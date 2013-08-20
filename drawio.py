@@ -29,6 +29,7 @@ def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
     gp('set output "{0}"'.format(output))
     gp.ylabel("MBps")
     gp.ylabel("I/O throughput [MB/s]")
+    gp('set yrange [0:*]')
     gdrmbps = Gnuplot.Data(range(t), rmbps, title = "Read", **plotprefdict)
     gdwmbps = Gnuplot.Data(range(t), wmbps, title = "Write", **plotprefdict)
     gp.plot(gdrmbps, gdwmbps)
@@ -54,8 +55,15 @@ def plot_ioprof(ioprof, outprefix, terminaltype = "png"):
 
     gp.close()
 
+def readiofile(iofile):
+    ioprof = [[float(v) for v in line.strip().split()] for line in open(iofile)]
+    return ioprof
+
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
+    if len(sys.argv) == 2:
+        iofile = sys.argv[1]
+        terminaltype = "png"
+    elif len(sys.argv) == 3:
         iofile = sys.argv[1]
         devname = sys.argv[2]
         terminaltype = "png"
@@ -72,8 +80,11 @@ if __name__ == "__main__":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)
 
-    from profileutils import get_ioprof
-    ioprof = get_ioprof(iofile, devname)
+    if len(sys.argv) == 2: ioprof = readiofile(iofile)
+    else:
+        from profileutils import get_ioprof
+        ioprof = get_ioprof(iofile, devname)
+
     outprefix = iofile.rsplit('.', 1)[0]
 
     plot_ioprof(ioprof, outprefix, terminaltype)
