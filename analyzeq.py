@@ -6,7 +6,8 @@ import numpy as np
 from profileutils import get_reliddict
 from plotutil import query2data, query2gds, gpinit, ceiltop
 
-slide = False
+#slide = False
+slide = 1
 xlogplot = True
 
 def get_iocosts(iodict):
@@ -267,29 +268,33 @@ class workmem_plotter(object):
         gds = []
         query = "select distinct workmem from measurement order by workmem"
         workmemlist = [r[0] for r in self.conn.execute(query)]
-        datalist = [[[] for v in workmemlist] for i in range(3)]
+        y1axes = [{"name": "cache-references", "values": [[] for v in workmemlist]},
+                  {"name": "cache-misses", "values": [[] for v in workmemlist]}]
+
+        y2axes = [{"name": "cache-miss-rates", "values": [[] for v in workmemlist]}]
         query = ("select workmem, cache_references, cache_misses "
                  "from measurement, cache "
                  "where measurement.id = cache.id "
                  "order by workmem")
         for r in self.conn.execute(query):
             idx = workmemlist.index(r[0])
-            datalist[0][idx].append(r[1])
-            datalist[1][idx].append(r[2])
-            datalist[2][idx].append(float(r[2]) / r[1] * 100)
+            for i, axis in enumerate(y1axes): axis["values"][idx].append(r[i + 1])
+            for i, axis in enumerate(y2axes):
+                axis["values"][idx].append(float(r[i + 2]) / r[i + 1] * 100)
         if slide: plotprefdict = {"with_" : "yerrorlines lw 2"}
         else: plotprefdict = {"with_" : "yerrorlines"}
-        for i, title in enumerate(("cache-references", "cache-misses")):
+        for axis in y1axes:
             gds.append(Gnuplot.Data(workmemlist,
-                                    [np.mean(vals) for vals in datalist[i]],
-                                    [np.std(vals) for vals in datalist[i]],
-                                    title = title,
-                                    axes = "x1y1", **plotprefdict))
-        gds.append(Gnuplot.Data(workmemlist,
-                                [np.mean(vals) for vals in datalist[2]],
-                                [np.std(vals) for vals in datalist[2]],
-                                title = "cache-miss-rates",
-                                axes = "x1y2", **plotprefdict))
+                                    [np.mean(vals) for vals in axis["values"]],
+                                    [np.std(vals) for vals in axis["values"]],
+                                    title = axis["name"], axes = "x1y1",
+                                    **plotprefdict))
+        for axis in y2axes:
+            gds.append(Gnuplot.Data(workmemlist,
+                                    [np.mean(vals) for vals in axis["values"]],
+                                    [np.std(vals) for vals in axis["values"]],
+                                    title = axis["name"], axes = "x1y2",
+                                    **plotprefdict))
 
         # cache size line
         # gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 100],
