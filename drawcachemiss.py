@@ -3,7 +3,7 @@
 import sys, os, glob, re, Gnuplot
 import plotutil
 
-def plot_cachemiss_old(cacheprof, output, terminaltype = "png"):
+def plot_cachemiss(cacheprof, output, terminaltype = "png"):
     gp = plotutil.gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
     gp.xlabel('elapsed time [s]')
@@ -11,7 +11,7 @@ def plot_cachemiss_old(cacheprof, output, terminaltype = "png"):
     gp('set ylabel "count" offset 4')
     gp('set y2label "cache miss rate [%]" offset -2')
     gp('set grid xtics noytics noy2tics')
-    gp('set yrange [0:1.2e+08]')
+    gp('set yrange [0:*]')
     gp('set y2range [0:100]')
     gp('set y2tic 10')
     gds = []
@@ -35,7 +35,7 @@ def plot_cachemiss_old(cacheprof, output, terminaltype = "png"):
     sys.stdout.write("output {0}\n".format(output))
     gp.close()
 
-def plot_cachemiss(cacheprof, output, terminaltype = "png"):
+def plot_cachemiss_new(cacheprof, output, terminaltype = "png"):
     gp = plotutil.gpinit(terminaltype)
     gp('set output "{0}"'.format(output))
     gp.xlabel('elapsed time [s]')
@@ -43,7 +43,7 @@ def plot_cachemiss(cacheprof, output, terminaltype = "png"):
     gp('set ylabel "count" offset 4')
     gp('set y2label "rate [%]" offset -2')
     gp('set grid xtics noytics noy2tics')
-    gp('set yrange [0:1.2e+08]')
+    gp('set yrange [0:*]')
     gp('set y2range [0:100]')
     gp('set y2tic 10')
     gds = []
@@ -57,7 +57,7 @@ def plot_cachemiss(cacheprof, output, terminaltype = "png"):
               {"name": "L3 cache miss rate", "values": []}]
     for v in cacheprof:
         xaxis.append(v[0])
-        for i, axis in enumerate(y1axes): axis["values"].append(v[i + 0])
+        for i, axis in enumerate(y1axes): axis["values"].append(v[i + 1])
         for i, axis in enumerate(y2axes): axis["values"].append(float(v[i + 2]) / v[i + 1] * 100)
     plotprefdict = {"with_" : "lines"}
     for axis in y1axes:
@@ -65,7 +65,7 @@ def plot_cachemiss(cacheprof, output, terminaltype = "png"):
                                 title = axis["name"], axes = "x1y1",
                                 **plotprefdict))
     for axis in y2axes:
-        gds.append(Gnuplot.Data(xaxis, axis["value"],
+        gds.append(Gnuplot.Data(xaxis, axis["values"],
                                 title = axis["name"], axes = "x1y2",
                                 **plotprefdict))
     gp.plot(*gds)
