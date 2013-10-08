@@ -6,8 +6,7 @@ import numpy as np
 from profileutils import get_reliddict
 from plotutil import query2data, query2gds, gpinit, ceiltop
 
-#slide = False
-slide = 1
+slide = False
 xlogplot = True
 
 def get_iocosts(iodict):
@@ -276,6 +275,18 @@ class workmem_plotter(object):
                  "from measurement, cache "
                  "where measurement.id = cache.id "
                  "order by workmem")
+        # y1axes = [{"name": "all-cache-references", "values": [[] for v in workmemlist]},
+        #           {"name": "L1D-cache-misses", "values": [[] for v in workmemlist]},
+        #           {"name": "L2-cache-misses", "values": [[] for v in workmemlist]},
+        #           {"name": "L3-cache-misses", "values": [[] for v in workmemlist]}]
+
+        # y2axes = [{"name": "L1D-cache-miss-rates", "values": [[] for v in workmemlist]},
+        #           {"name": "L2-cache-miss-rates", "values": [[] for v in workmemlist]},
+        #           {"name": "L3-cache-miss-rates", "values": [[] for v in workmemlist]}]
+        # query = ("select workmem, all_cache_references, L1D_cache_misses,L2_cache_misses,L3_cache_misses "
+        #          "from measurement, cache "
+        #          "where measurement.id = cache.id "
+        #          "order by workmem")
         for r in self.conn.execute(query):
             idx = workmemlist.index(r[0])
             for i, axis in enumerate(y1axes): axis["values"][idx].append(r[i + 1])
