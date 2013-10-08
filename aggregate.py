@@ -176,15 +176,15 @@ def main(rootdir, devnames, corenums):
                    "readio_nsec real",
                    "writeio_nsec real")
     cachetbl = "cache"
-    # cachecols = ("id integer",
-    #              "cycles integer",
-    #              "cache_references integer",
-    #              "cache_misses integer")
     cachecols = ("id integer",
-                 "all_cache_references integer",
-                 "L1D_cache_misses integer",
-                 "L2_cache_misses integer",
-                 "L3_cache_misses integer")
+                 "cycles integer",
+                 "cache_references integer",
+                 "cache_misses integer")
+    # cachecols = ("id integer",
+    #              "all_cache_references integer",
+    #              "L1D_cache_misses integer",
+    #              "L2_cache_misses integer",
+    #              "L3_cache_misses integer")
     tbldict = {maintbl : maincols,
                iostattbl : iostatcols,
                cputbl : cpucols,

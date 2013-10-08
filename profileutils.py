@@ -176,7 +176,7 @@ def get_iocostprof(srcpath):
         prevblock = int(val[3], 16)
     return iohist
 
-def get_cachecoreprof_old(srcpath, interval):
+def get_cachecoreprof(srcpath, interval):
     selects = ["cycles", "cache-references", "cache-misses"]
     cacheprofdict = {"schema": tuple(["time"] + selects)}
     corepat = re.compile("CPU(\d+)")
@@ -201,7 +201,7 @@ def get_cachecoreprof_old(srcpath, interval):
             tmpdict = {}
     return cacheprofdict
 
-def get_cachecoreprof(srcpath, interval):
+def get_cachecoreprof_new(srcpath, interval):
     selects = ["r1cb", "r40cb", "r2cb", "r4cb", "r8cb", "r10cb"]
     cols = ["all_cache_references", "L1D_cache_misses", "L2_cache_misses", "L3_cache_misses"]
     cacheprofdict = {"schema": tuple(["time"] + cols)}
