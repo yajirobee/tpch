@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 
-import sys, os, sqlite3
-from plotutil import query2gds, gpinit, ceiltop
+import sys, os, sqlite3, Gnuplot
+from plotutil import query2gds, query2data, gpinit, ceiltop
 
 slide = False
+slide = 1
 
 def draw_bucket(dbpath, terminaltype = "png"):
     conn = sqlite3.connect(dbpath)
@@ -11,6 +12,7 @@ def draw_bucket(dbpath, terminaltype = "png"):
     dirname = os.path.dirname(os.path.abspath(dbpath))
     output = "{0}/bucketscan.{1}".format(dirname, terminaltype)
     gp('set output "{0}"'.format(output))
+    gp('set key inside left top')
     gp.xlabel("work\_mem [byte]")
     gp('set ylabel "# of bucket scan"')
     gp('set y2label "# of partition * # of bucket"')
@@ -26,18 +28,20 @@ def draw_bucket(dbpath, terminaltype = "png"):
     if slide:
         if "eps" == terminaltype:
             gp('set termoption font "Times-Roman,28"')
-            plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
+            plotprefdict = {"with_" : "points lt 1 lw 6" }
         elif "png" == terminaltype:
             gp('set termoption font "Times-Roman,18"')
-            plotprefdict = {"with_" : "linespoints lw 2"}
+            plotprefdict = {"with_" : "points lw 2"}
     else:
-        plotprefdict = {"with_" : "linespoints" }
+        plotprefdict = {"with_" : "points" }
     query = "select workmem, {0} from bucketinfo order by workmem"
     gds = []
-    gds.extend(query2gds(conn, query.format("sum"),
-                         title = "nbucketscan", axes = "x1y1", **plotprefdict))
+    datalist = query2data(conn, query.format("sum"))
+    gds.append(Gnuplot.Data(datalist[0], datalist[1], [v / 4 for v in datalist[0]],
+                            title = "nbucketscan", axes = "x1y1",
+                            with_ = 'boxes lc rgb "blue" fs solid border lc rgb "black"'))
     gds.extend(query2gds(conn, query.format("nbatch * nbucket"),
-                         title = "npart * nbucket", axes = "x1y2", **plotprefdict))
+                         title = "npartition * nbucket", axes = "x1y2", **plotprefdict))
     gp.plot(*gds)
     sys.stdout.write("output {0}\n".format(output))
     gp.close()

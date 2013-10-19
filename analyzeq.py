@@ -165,32 +165,23 @@ class workmem_plotter(object):
         if not nrow: return
         gp = self.init_gnuplot()
         query = "select max(usr + sys + iowait + idle) from cpu"
-        maxper = int(self.conn.execute(query).fetchone()[0])
-        maxper = int(ceiltop(maxper))
+        maxper = int(round(self.conn.execute(query).fetchone()[0], -2))
         gp('set output "{0}"'.format(output))
         gp.ylabel("CPU util [%]")
         gp('set yrange [0:{0}]'.format(maxper))
         gp('set key outside top')
         gp('set style fill pattern 1 border')
-        self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(usr) as usr, avg(sys) as sys, avg(iowait) as iowait, "
                  "avg(irq) as irq, avg(soft) as soft, avg(idle) as idle "
                  "from measurement, cpu "
                  "where measurement.id = cpu.id "
                  "group by workmem order by workmem")
-        cur = self.conn.cursor()
-        cur.execute(query)
-        r = cur.fetchone()
-        keys = r.keys()
-        xlist = []
-        piledatas = [[] for i in range(len(keys[1:]))]
-        xlist.append(r[0])
-        piledatas[0].append(r[1])
-        for i in range(2, len(keys)): piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
-        for r in cur:
-            xlist.append(r[0])
-            piledatas[0].append(r[1])
-            for i in range(2, len(keys)): piledatas[i - 1].append(piledatas[i - 2][-1] + r[i])
+        datas = query2data(self.conn, query)
+        keys = ("workmem", "exectime", "usr", "iowait", "irq", "soft", "idle")
+        xlist = datas[0]
+        piledatas = [np.array(datas[1])]
+        for d in datas[2:]: piledatas.append(np.array(d) + piledatas[-1])
+        piledatas = [d.tolist() for d in piledatas]
         gds = []
         widthlist = [v / 4 for v in xlist] if xlogplot else [2 ** 20 / 2 for v in xlist]
         for k, dat in zip(keys[:0:-1], piledatas[::-1]):
@@ -205,39 +196,33 @@ class workmem_plotter(object):
         nrow = self.conn.execute("select count(*) from cpu").fetchone()[0]
         if not nrow: return
         gp = self.init_gnuplot()
-        query = "select max(usr + sys + iowait + idle) from cpu"
-        maxper = int(self.conn.execute(query).fetchone()[0])
-        maxper = int(ceiltop(maxper))
+        query = "select max(usr + sys + iowait + idle + irq + soft) from cpu"
+        maxper = int(round(self.conn.execute(query).fetchone()[0], -2))
         gp('set output "{0}"'.format(output))
         gp('set ylabel "Time [s]" offset 2')
         gp('set yrange [0:*]')
         gp('set key inside top left')
         gp('set style fill pattern 1 border')
-        self.conn.row_factory = sqlite3.Row
         query = ("select workmem, avg(exectime) as exectime, "
                  "avg(usr) / {maxper} as usr, avg(sys) / {maxper} as sys, "
                  "avg(iowait) / {maxper} as iowait, "
-                 #"avg(irq) / {maxper} as irq, avg(soft) / {maxper} as soft, "
+                 "avg(irq) / {maxper} as irq, avg(soft) / {maxper} as soft, "
                  "avg(idle) / {maxper} as idle "
                  "from measurement, cpu "
                  "where measurement.id = cpu.id "
                  "group by workmem order by workmem"
                  .format(maxper = maxper))
-        cur = self.conn.cursor()
-        cur.execute(query)
-        r = cur.fetchone()
-        keys = r.keys()
-        xlist = []
-        piledatas = [[] for i in range(len(keys[2:]))]
-        xlist.append(r[0])
-        piledatas[0].append(r[2])
-        for i in range(3, len(keys)): piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
-        for i in range(len(keys[2:])): piledatas[i][-1] *= r[1]
-        for r in cur:
-            xlist.append(r[0])
-            piledatas[0].append(r[2])
-            for i in range(3, len(keys)): piledatas[i - 2].append(piledatas[i - 3][-1] + r[i])
-            for i in range(len(keys[2:])): piledatas[i][-1] *= r[1]
+        datas = query2data(self.conn, query)
+        keys = ("workmem", "exectime", "usr", "iowait", "irq", "soft", "idle")
+        xlist = datas[0]
+        exectimes = np.array(datas[1])
+        piledatas = [np.array(datas[2])]
+        for d in datas[3:]: piledatas.append(np.array(d) + piledatas[-1])
+        for d in piledatas: d *= exectimes
+        piledatas = [d.tolist() for d in piledatas]
+        with open("{0}/cputime.dat".format(os.path.dirname(output)), "w") as fo:
+            for vals in zip(xlist, *piledatas[::-1]):
+                fo.write("{0}\n".format('\t'.join([str(v) for v in vals])))
         gds = []
         widthlist = [v / 4 for v in xlist] if xlogplot else [2 ** 20 / 2 for v in xlist]
         gp('set xrange [{0}:*]'.format(xlist[0] - widthlist[0] / 2))
