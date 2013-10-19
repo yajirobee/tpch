@@ -24,15 +24,12 @@ def plot_iocostprof(iocostprof, output, terminaltype):
     gp.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        iotracefile = sys.argv[1]
-        terminaltype = "png"
-    elif len(sys.argv) == 3:
-        iotracefile = sys.argv[1]
-        terminaltype = sys.argv[2]
-    else:
+    if len(sys.argv) < 2:
         sys.stdout.write("Usage : {0} iotracefile [png|eps]\n".format(sys.argv[0]))
         sys.exit(0)
+
+    iotracefile = sys.argv[1]
+    terminaltype = sys.argv[2]
 
     from profileutils import get_iocostprof
     iocostprof = get_iocostprof(iotracefile)

@@ -73,18 +73,14 @@ def plot_cachemiss_new(cacheprof, output, terminaltype = "png"):
     gp.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
-        statfile = sys.argv[1]
-        core = sys.argv[2]
-        terminaltype = "png"
-    elif len(sys.argv) == 4:
-        statfile = sys.argv[1]
-        core = sys.argv[2]
-        terminaltype = sys.argv[3]
-    else:
+    if len(sys.argv) < 3:
         sys.stderr.write(
             "Usage : {0} statfile core [terminaltype]\n".format(sys.argv[0]))
         sys.exit(0)
+
+    statfile = sys.argv[1]
+    core = sys.argv[2]
+    terminaltype = sys.argv[3] if len(sys.argv) >= 4 else "png"
 
     from profileutils import get_cacheprof
     cacheprof = get_cacheprof(statfile, core)
