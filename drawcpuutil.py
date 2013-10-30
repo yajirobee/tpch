@@ -6,17 +6,13 @@ import plotutil
 utilcol = 2
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        cpuproffile = sys.argv[1]
-        terminaltype = "png"
-    elif len(sys.argv) == 3:
-        cpuproffile = sys.argv[1]
-        terminaltype = sys.argv[2]
-    else:
+    if len(sys.argv) < 2:
         sys.stdout.write(
             "Usage : {0} mpstatfile [eps|png]\n".format(sys.argv[0]))
         sys.exit(0)
 
+    cpuproffile = sys.argv[1]
+    terminaltype = sys.argv[2] if len(sys.argv) >= 3 else "png"
     if terminaltype != "png" and terminaltype != "eps":
         sys.stdout.write("wrong terminal type\n")
         sys.exit(1)

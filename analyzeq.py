@@ -315,23 +315,14 @@ class workmem_plotter(object):
         gp.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        rootdir = sys.argv[1]
-        relidfile = None
-        terminaltype = "png"
-    elif len(sys.argv) == 3:
-        rootdir = sys.argv[1]
-        relidfile = sys.argv[2]
-        terminaltype = "png"
-    elif len(sys.argv) == 4:
-        rootdir = sys.argv[1]
-        relidfile = sys.argv[2]
-        terminaltype = sys.argv[3]
-    else:
+    if len(sys.argv) < 2:
         sys.stderr.write(
             "Usage : {0} rootdir [relidfile] [eps|png]\n".format(sys.argv[0]))
         sys.exit(0)
 
+    rootdir = sys.argv[1]
+    relidfile = sys.argv[2] if len(sys.argv) >= 3 else None
+    terminaltype = sys.argv[3] if len(sys.argv) >= 4 else "png"
     if terminaltype != "png" and terminaltype != "eps":
         sys.stderr.write("wrong terminal type\n")
         sys.exit(1)
