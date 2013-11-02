@@ -1,10 +1,12 @@
 #! /usr/bin/env python
 
 import sys, os, glob, re, Gnuplot, sqlite3
-import drawio, drawcpu, drawiocost, drawioref, drawcachemiss
+import drawiocost, drawioref
 import numpy as np
-from profileutils import get_reliddict
+from dbprofutils import get_reliddict
 from plotutil import query2data, query2gds, gpinit, ceiltop
+
+import drawio, drawcpu, drawcache, generategraphsdir
 
 slide = False
 xlogplot = True
@@ -29,28 +31,18 @@ def get_iocosts(iodict):
     return iocostlist
 
 def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
+    statfiles = generategraphsdir.search_statfiles(rootdir)
+    generategraphsdir.generate_allstatgraphs(statfiles, terminaltype = terminaltype)
     for d in glob.iglob(rootdir + "/workmem*"):
         for dd in glob.iglob(d + "/[0-9]*"):
             outprefix = dd + "/default"
             for f in glob.iglob(dd + "/*.res"):
-                outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
+                outprefix = os.path.splitext(f)[0] + os.path.basename(d)
             for f in glob.iglob(dd + "/*.time"):
-                outprefix = f.rsplit('.', 1)[0] + os.path.basename(d)
-            for f in glob.iglob(dd + "/*.iohist"):
-                ioprof = [[float(v) for v in line.strip().split()] for line in open(f)]
-                outpf = f.rsplit('.', 1)[0] + "_" + os.path.basename(d)
-                drawio.plot_ioprof(ioprof, outpf, terminaltype)
-            for f in glob.iglob(dd + "/*.cpuhist"):
-                cpuprof = [[float(v) for v in line.strip().split()] for line in open(f)]
-                output = f.rsplit('.', 1)[0] + "_" + os.path.basename(d) + "." + terminaltype
-                drawcpu.plot_cpuprof(cpuprof, output, terminaltype)
-            for f in glob.iglob(dd + "/*.cachehist"):
-                cacheprof = [[float(v) for v in line.strip().split()] for line in open(f)]
-                output = f.rsplit('.', 1)[0] + os.path.basename(d) + "cache." + terminaltype
-                drawcachemiss.plot_cachemiss(cacheprof, output, terminaltype)
+                outprefix = os.path.splitext(f)[0] + os.path.basename(d)
             for f in glob.iglob(dd + "/trace_*.iocosthist"):
                 iocostprof = [[float(v) for v in line.strip().split()] for line in open(f)]
-                output = "{0}iocosthist.{1}".format(outprefix, terminaltype)
+                output = "{0}_iocosthist.{1}".format(outprefix, terminaltype)
                 drawiocost.plot_iocostprof(iocostprof, output, terminaltype)
             if reliddict:
                 for f in glob.iglob(dd + "/trace_*.iorefhist"):
@@ -63,7 +55,7 @@ def gen_allgraph(rootdir, reliddict = None, terminaltype = "png"):
                                 k, v = word.split(':', 1)
                                 dic[int(k)] = int(v)
                         iorefhist.append(dic)
-                    output = "{0}iorefhist.{1}".format(outprefix, terminaltype)
+                    output = "{0}_iorefhist.{1}".format(outprefix, terminaltype)
                     drawioref.plot_tblrefhist(reliddict, iorefhist, output, terminaltype)
 
 class workmem_plotter(object):
@@ -313,7 +305,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reliddict = get_reliddict(relidfile) if relidfile else None
-    #gen_allgraph(rootdir, reliddict, terminaltype)
+    gen_allgraph(rootdir, reliddict, terminaltype)
 
     xlogplot = True
     wp = workmem_plotter(rootdir + "/spec.db", terminaltype)

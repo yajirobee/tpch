@@ -2,8 +2,9 @@
 
 import sys, os, glob, re, multiprocessing, sqlite3
 import numpy as np
-import drawio, drawcpu
-from profileutils import get_ioprof, get_cpuprof, get_iocostprof, get_cachecoreprof, get_cacheaggprof
+from dbprofutils import get_iocostprof
+
+import drawio, drawcpu, profileutils
 
 def proc_suffix(val, prefix):
     if 'k' == prefix: val *= 2 ** 10
@@ -30,14 +31,14 @@ def get_exectime(resfile):
     return None
 
 def proc_iofile(iofile, devnames):
-    ioprofdict = get_ioprof(iofile)
+    iostatdict = profileutils.import_iostatfile(iofile)
     average = []
     for dev in devnames:
-        ioprof = ioprofdict.get(dev)
+        ioprof = iostatdict.get(dev)
         if not ioprof: continue
-        output = "{0}_{1}.iohist".format(iofile.rsplit('.', 1)[0], dev)
+        output = "{0}_{1}.iohist".format(os.path.splitext(iofile)[0], dev)
         with open(output, "w") as fo:
-            for line in ioprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
+            for tup in ioprof: fo.write('\t'.join([str(v) for v in tup]) + "\n")
         ave = np.add.reduce(ioprof)
         ave /= len(ioprof)
         average.append(ave)
@@ -48,14 +49,14 @@ def proc_iofile(iofile, devnames):
     return average.tolist() if average != [] else None
 
 def proc_cpufile(cpufile, corenums):
-    cpuprofdict = get_cpuprof(cpufile)
+    cpustatdict = profileutils.import_mpstatfile(cpufile)
     average = []
     for core in corenums:
-        cpuprof = cpuprofdict.get(core)
+        cpuprof = cpustatdict.get(core)
         if not cpuprof: continue
-        output = "{0}_core{1}.cpuhist".format(cpufile.rsplit('.', 1)[0], core)
+        output = "{0}_core{1}.cpuhist".format(os.path.splitext(cpufile)[0], core)
         with open(output, "w") as fo:
-            for line in cpuprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
+            for tup in cpuprof: fo.write('\t'.join([str(v) for v in tup]) + "\n")
         ave = np.add.reduce(cpuprof)
         ave /= len(cpuprof)
         average.append(ave)
@@ -64,47 +65,40 @@ def proc_cpufile(cpufile, corenums):
         average = np.add.reduce(average)
     return average.tolist() if average != [] else None
 
-def proc_statfile(statfile, corenums):
-    interval = 1
+def proc_statfile(statfile, corenums = None):
+    columns = ("cycles", "cache_references", "cache_misses")
     if corenums:
-        cacheprofdict = get_cachecoreprof(statfile, interval)
+        perfstatdict = profileutils.import_perfstatfile(statfile)
         total = []
         for core in corenums:
-            cacheprof = cacheprofdict.get(core)
+            cacheprof = perfstatdict.get(core)
             if not cacheprof: continue
-            output = "{0}_core{1}.cachehist".format(statfile.rsplit('.' , 1)[0], core)
+            output = "{0}_core{1}.cachehist".format(os.path.splitext(statfile)[0], core)
             with open(output, "w") as fo:
-                for line in cacheprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
-            s = np.add.reduce([vals[1:] for vals in cacheprof])
+                for dic in cacheprof:
+                    fo.write('\t'.join(["{0}:{1}".format(k, v) for k, v in dic.items()]) + "\n")
+            s = np.add.reduce([[d.get(col, 0) for col in columns] for d in cacheprof])
             total.append(s)
-        if total:
-            total = np.add.reduce(total)
-        return total.tolist() if total != [] else None
+        return np.add.reduce(total).tolist() if total else None
     else:
-        cacheprof = get_cacheaggprof(statfile, interval)
-        if not cacheprof: return None
-        output = "{0}.cachehist".format(statfile.rsplit('.' , 1)[0])
+        perfstatlist = profileutils.import_perfstatfile_aggregated(statfile)
+        if not perfstatlist: return None
+        output = "{0}.cachehist".format(os.path.splitext(statfile)[0])
         with open(output, "w") as fo:
-            for line in cacheprof: fo.write('\t'.join([str(v) for v in line]) + "\n")
-        total = np.add.reduce(vals[1:] for vals in cacheprof)
-        return total.tolist()
+            for dic in perfstatlist:
+                fo.write("\t".join(["{0}:{1}".format(k, v) for k, v in dic.items()]) + "\n")
+        return np.add.reduce([[d.get(col, 0) for col in columns] for d in perfstatlist]).tolist()
 
 def proc_tracefile(iotracefile):
     iocostprof = get_iocostprof(iotracefile)
-    statoutput = "{0}.iocosthist".format(iotracefile.rsplit('.', 1)[0])
-    refoutput = "{0}.iorefhist".format(iotracefile.rsplit('.', 1)[0])
-    fs = open(statoutput, "w")
-    fr = open(refoutput, "w")
-    for line in iocostprof:
-        fs.write('\t'.join([str(v) for v in line[:-1]]) + "\n")
-        fr.write(','.join(["{0}:{1}".format(k, v) for k, v in line[-1].items()]) + "\n")
-    fs.close()
-    fr.close()
-    total = None
-    if iocostprof:
-        total = np.add.reduce([vals[:-1] for vals in iocostprof])
-        total = total.tolist()
-    return total
+    fprefix = os.path.splitext(iotracefile)[0]
+    statoutput = "{0}.iocosthist".format(fprefix)
+    refoutput = "{0}.iorefhist".format(fprefix)
+    with open(statoutput, "w") as fs, open(refoutput, "w") as fr:
+        for line in iocostprof:
+            fs.write('\t'.join([str(v) for v in line[:-1]]) + "\n")
+            fr.write(','.join(["{0}:{1}".format(k, v) for k, v in line[-1].items()]) + "\n")
+    return np.add.reduce([vals[:-1] for vals in iocostprof]).tolist() if iocostprof else None
 
 def proc_directory(directory, devnames, corenums):
     sys.stdout.write("processing {0}\n".format(directory))
