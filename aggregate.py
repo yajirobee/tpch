@@ -52,7 +52,7 @@ def proc_cpufile(cpufile, corenums):
     cpustatdict = profileutils.import_mpstatfile(cpufile)
     average = []
     for core in corenums:
-        cpuprof = cpustatdict.get(core)
+        cpuprof = cpustatdict.get(str(core))
         if not cpuprof: continue
         output = "{0}_core{1}.cpuhist".format(os.path.splitext(cpufile)[0], core)
         with open(output, "w") as fo:
@@ -71,7 +71,7 @@ def proc_statfile(statfile, corenums = None):
         perfstatdict = profileutils.import_perfstatfile(statfile)
         total = []
         for core in corenums:
-            cacheprof = perfstatdict.get(core)
+            cacheprof = perfstatdict.get(str(core))
             if not cacheprof: continue
             output = "{0}_core{1}.cachehist".format(os.path.splitext(statfile)[0], core)
             with open(output, "w") as fo:
@@ -213,13 +213,19 @@ def main(rootdir, devnames, corenums):
     conn.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) == 4:
-        rootdir = sys.argv[1]
-        devnames = sys.argv[2].split(',')
-        corenums = sys.argv[3].split(',')
-    else:
+    if len(sys.argv) < 4:
         sys.stderr.write(
             "Usage : {0} rootdir devnames corenums\n".format(sys.argv[0]))
         sys.exit(0)
+    rootdir = sys.argv[1]
+    devnames = sys.argv[2].split(',')
+    corenumstrs = sys.argv[3].split(',')
+    corenums = []
+    for corenumstr in corenumstrs:
+        if corenumstr.count("-") == 1:
+            start, end = corenumstr.split("-", 1)
+            corenums.extend([str(i) for i in range(int(start), int(end) + 1)])
+        else:
+            corenums.append(corenumstr)
 
     main(rootdir, devnames, corenums)
