@@ -66,7 +66,7 @@ def proc_cpufile(cpufile, corenums):
     return average.tolist() if average != [] else None
 
 def proc_statfile(statfile, corenums = None):
-    columns = ("cycles", "cache_references", "cache_misses")
+    columns = ("cycles", "cache-references", "cache-misses")
     if corenums:
         perfstatdict = profileutils.import_perfstatfile(statfile)
         total = []
