@@ -129,8 +129,10 @@ def main(rootdir, devnames, corenums):
     dirs = []
     for d in glob.iglob(rootdir + "/workmem*"):
         dirs.extend(glob.glob(d + "/[0-9]*"))
+    #res = [proc_directory(d, devnames, corenums) for d in dirs]
     argslist = [(proc_directory, d, devnames, corenums) for d in dirs]
     res = pool.map(multiprocessing_helper, argslist)
+
 
     # for d in dirs:
     #     proc_directory(d, devnames, corenums)
