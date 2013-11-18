@@ -137,7 +137,7 @@ class workmem_plotter(object):
                  "where measurement.id = cpu.id "
                  "group by workmem order by workmem")
         datas = query2data(self.conn, query)
-        keys = ("workmem", "exectime", "usr", "iowait", "irq", "soft", "idle")
+        keys = ("workmem", "usr", "sys", "iowait", "irq", "soft", "idle")
         xlist = datas[0]
         piledatas = [np.array(datas[1])]
         for d in datas[2:]: piledatas.append(np.array(d) + piledatas[-1])
@@ -173,7 +173,7 @@ class workmem_plotter(object):
                  "group by workmem order by workmem"
                  .format(maxper = maxper))
         datas = query2data(self.conn, query)
-        keys = ("workmem", "exectime", "usr", "iowait", "irq", "soft", "idle")
+        keys = ("workmem", "exectime", "usr", "sys", "iowait", "irq", "soft", "idle")
         xlist = datas[0]
         exectimes = np.array(datas[1])
         piledatas = [np.array(datas[2])]
