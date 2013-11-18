@@ -4,7 +4,7 @@ import sys, os, glob, re, multiprocessing, sqlite3
 import numpy as np
 from dbprofutils import get_iocostprof
 
-import drawio, drawcpu, profileutils
+import profileutils
 
 def proc_suffix(val, prefix):
     if 'k' == prefix: val *= 2 ** 10
