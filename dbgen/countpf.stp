@@ -1,0 +1,40 @@
+#! /usr/bin/env stpap
+
+global wrflg, page_faults, prev_pf
+
+probe begin {
+  tpid = target()
+  printf("execname(pid) = %s(%d)\n", pid2execname(tpid), tpid)
+  printf("%-16s %-6s %-10s %-10s\n", "Execname", "pid", "RD Faults", "WR Faults")
+  printf("======================= ========== ==========\n")
+}
+
+probe vm.pagefault {
+  if (pid() == target()){
+    wrflg = write_access ? 1 : 0
+  }
+}
+
+probe vm.pagefault.return {
+  if ((pid() == target()) && (vm_fault_contains(fault_type, VM_FAULT_MAJOR))){
+    page_faults[wrflg] <<< 1
+  }
+}
+
+probe timer.s(1) {
+  tpid = target()
+  printf("%-16s %6d %10d %10d\n",
+         pid2execname(tpid), tpid,
+         @count(page_faults[0]) - prev_pf[0], @count(page_faults[1]) - prev_pf[1])
+  prev_pf[0] = @count(page_faults[0])
+  prev_pf[1] = @count(page_faults[1])
+}
+
+probe end {
+  printf("\n")
+  printf("Total Page Faults: \n")
+  printf("%-10s %-10s\n", "RD Faults", "WR Faults")
+  printf("========== ==========\n")
+  printf("%10d %10d\n", @count(page_faults[0]), @count(page_faults[1]))
+  printf("Done\n")
+}
