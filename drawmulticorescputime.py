@@ -16,13 +16,15 @@ def plot_multicores_cputime(dbpaths, output, terminaltype = "png"):
         sys.exit(1)
     gp('set output "{0}"'.format(output))
     gp('set style fill solid border lc rgb "black"')
-    gp('set boxwidth 0.1 relative')
+    #gp('set boxwidth 0.1 relative')
     gp('set logscale x 2')
     gp('set key inside top left')
+    gp('set xrange [{min}:{max}]'.format(min = 3 * (1 << 14), max = 3 * (1 << 28)))
     gp('set yrange [0:*]')
     gp('set xlabel "work\_mem [byte]" offset 0,0.3')
     gp('set ylabel "Time [s]" offset 2')
-    gp('set label 1 "1    8  64" at 50000,-8')
+    gp('set label 1 "1     8   64" at 48500,-8')
+    #gp('set label 1 "16 32 64" at 50000,-8')
     gp('set label 1 font "Times-Roman, 14"')
     gp('set format x "%.0b%B"')
     gp('set grid')
@@ -30,7 +32,7 @@ def plot_multicores_cputime(dbpaths, output, terminaltype = "png"):
     colors = ("red", "dark-magenta", "light-blue", "green", "blue", "orange")
     gds = []
     numres = len(dbpaths)
-    step = 0.09
+    step = 0.1
     margin = numres / 2 - 0.5 if numres % 2 == 0 else numres / 2
     for i, dbpath in enumerate(dbpaths):
         conn = sqlite3.connect(dbpath)
@@ -48,7 +50,7 @@ def plot_multicores_cputime(dbpaths, output, terminaltype = "png"):
         datas = query2data(conn, query)
         conn.close()
         xlist = [v * math.log(2 + step * (i - margin), 2) for v in datas[0]]
-        widthlist = [v / 20 for v in datas[0]]
+        widthlist = [v / 20 for v in xlist]
         exectimes = np.array(datas[1])
         piledatas = [np.array(datas[2])]
         for d in datas[3:]: piledatas.append(np.array(d) + piledatas[-1])

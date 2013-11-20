@@ -4,7 +4,7 @@ import sys, os, glob, re, Gnuplot, sqlite3
 import numpy as np
 from plotutil import query2data, query2gds, gpinit, ceiltop
 
-slide = False
+slide = False | True
 xlogplot = True
 
 def get_iocosts(iodict):
@@ -160,7 +160,7 @@ class workmem_plotter(object):
         maxper = int(round(self.conn.execute(query).fetchone()[0], -2))
         gp('set output "{0}"'.format(output))
         gp('set ylabel "Time [s]" offset 2')
-        gp('set yrange [0:*]')
+        gp('set yrange [0:500]')
         gp('set key inside top left')
         gp('set style fill pattern 1 border')
         query = ("select workmem, avg(exectime) as exectime, "
@@ -174,6 +174,7 @@ class workmem_plotter(object):
                  .format(maxper = maxper))
         datas = query2data(self.conn, query)
         keys = ("workmem", "exectime", "usr", "sys", "iowait", "irq", "soft", "idle")
+        colors = ("red", "dark-magenta", "light-blue", "green", "blue", "orange")
         xlist = datas[0]
         exectimes = np.array(datas[1])
         piledatas = [np.array(datas[2])]
@@ -186,10 +187,10 @@ class workmem_plotter(object):
         gds = []
         widthlist = [v / 4 for v in xlist] if xlogplot else [2 ** 20 / 2 for v in xlist]
         gp('set xrange [{0}:*]'.format(xlist[0] - widthlist[0] / 2))
-        for k, dat in zip(keys[:0:-1], piledatas[::-1]):
+        for k, dat, color in zip(keys[:0:-1], piledatas[::-1], colors):
             gds.append(Gnuplot.Data(xlist, dat, widthlist,
                                     title = k,
-                                    with_ = 'boxes fs solid border lc rgb "black"'))
+                                    with_ = 'boxes lc rgb "{0}" fs solid border lc rgb "black"'.format(color)))
         # cache size line
         # gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 1400], with_ = 'lines lw 2 lc 8'))
         gp.plot(*gds)
