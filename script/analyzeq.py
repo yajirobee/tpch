@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 
-import sys, os, glob, re, Gnuplot, sqlite3
+import sys, os, glob, re, Gnuplot, sqlite3, Gnuplot
 import numpy as np
-from plotutil import query2data, query2gds, gpinit, ceiltop
+from plotutil import query2data, query2gds, ceiltop
 
-slide = False | True
+slide = False #| True
 xlogplot = True
 
 def get_iocosts(iodict):
@@ -33,21 +33,25 @@ class workmem_plotter(object):
         self.plotprefdict = {}
 
     def init_gnuplot(self):
-        gp = gpinit(self.terminaltype)
+        gp = Gnuplot.Gnuplot()
+        if slide:
+            if terminaltype == "eps":
+                gp('set terminal postscript eps color "Times-Roman,26"')
+                self.plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
+            elif terminaltype == "png":
+                gp('set terminal png size 800,600 font "Times-Roman,18"')
+                self.plotprefdict = {"with_" : "linespoints lw 2"}
+        else:
+            if terminaltype == "eps":
+                gp('set terminal postscript eps color "Times-Roman,26"')
+            elif terminaltype == "png":
+                gp('set terminal png size 800,600')
+            self.plotprefdict = {"with_" : "linespoints" }
         #gp('set terminal epslatex color 11')
         gp.xlabel("work\_mem [byte]")
         gp('set format x "%.0b%B"')
         if xlogplot: gp('set logscale x 2')
         gp('set grid')
-        if slide:
-            if "eps" == terminaltype:
-                gp('set termoption font "Times-Roman,28"')
-                self.plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
-            elif "png" == terminaltype:
-                gp('set termoption font "Times-Roman,18"')
-                self.plotprefdict = {"with_" : "linespoints lw 2"}
-        else:
-            self.plotprefdict = {"with_" : "linespoints" }
         return gp
 
     def __del__(self):
@@ -160,7 +164,7 @@ class workmem_plotter(object):
         maxper = int(round(self.conn.execute(query).fetchone()[0], -2))
         gp('set output "{0}"'.format(output))
         gp('set ylabel "Time [s]" offset 2')
-        gp('set yrange [0:500]')
+        gp('set yrange [0:*]')
         gp('set key inside top left')
         gp('set style fill pattern 1 border')
         query = ("select workmem, avg(exectime) as exectime, "
