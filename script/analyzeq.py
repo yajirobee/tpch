@@ -4,7 +4,7 @@ import sys, os, glob, re, Gnuplot, sqlite3, Gnuplot
 import numpy as np
 from plotutil import query2data, query2gds, ceiltop
 
-slide = False #| True
+slide = False | True
 xlogplot = True
 
 def get_iocosts(iodict):
