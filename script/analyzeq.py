@@ -39,7 +39,7 @@ class workmem_plotter(object):
                 gp('set terminal postscript eps color "Times-Roman,26"')
                 self.plotprefdict = {"with_" : "linespoints lt 1 lw 6" }
             elif terminaltype == "png":
-                gp('set terminal png size 800,600 font "Times-Roman,18"')
+                gp('set terminal png size 800,600 font "Times-Roman,22"')
                 self.plotprefdict = {"with_" : "linespoints lw 2"}
         else:
             if terminaltype == "eps":
@@ -165,7 +165,7 @@ class workmem_plotter(object):
         gp('set output "{0}"'.format(output))
         gp('set ylabel "Time [s]" offset 2')
         gp('set yrange [0:*]')
-        gp('set key inside top left')
+        gp('set key inside top right')
         gp('set style fill pattern 1 border')
         query = ("select workmem, avg(exectime) as exectime, "
                  "avg(usr) / {maxper} as usr, avg(sys) / {maxper} as sys, "
@@ -196,7 +196,7 @@ class workmem_plotter(object):
                                     title = k,
                                     with_ = 'boxes lc rgb "{0}" fs solid border lc rgb "black"'.format(color)))
         # cache size line
-        # gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 1400], with_ = 'lines lw 2 lc 8'))
+        gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 1400], with_ = 'lines lw 2 lc 8'))
         gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
         gp.close()
@@ -213,7 +213,9 @@ class workmem_plotter(object):
         gp('set yrange[0:*]')
         gp('set y2range [0:100]')
         gp('set y2tic 10')
-        gp('set key inside right bottom')
+        # gp('set key inside right bottom')
+        gp('set key outside width -7')
+        if terminaltype == "eps": gp('set size 1.4,1')
         gds = []
         query = "select distinct workmem from measurement order by workmem"
         workmemlist = [r[0] for r in self.conn.execute(query)]
@@ -259,8 +261,8 @@ class workmem_plotter(object):
                                     **plotprefdict))
 
         # cache size line
-        # gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 100],
-        #                         axes = "x1y2", with_ = 'lines lw 2 lc 8'))
+        gds.append(Gnuplot.Data([24 * 2 ** 20] * 2, [0, 100],
+                                axes = "x1y2", with_ = 'lines lw 2 lc 8'))
         gp.plot(*gds)
         sys.stdout.write("output {0}\n".format(output))
         gp.close()
