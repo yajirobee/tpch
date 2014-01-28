@@ -12,9 +12,9 @@ class query_runner(object):
     cpus = [1]
     pgbindir = "/data/local/keisuke/local/bin/"
     #pgbindir = "/data/local/keisuke/local/pgtest/bin/"
-    #db = "tpch"
-    db = "tpchdisk"
-    dbs = ["tpch{0}".format(i) for i in range(64)]
+    db = "tpch"
+    #db = "tpchdisk"
+    dbs = ["tpch{0}".format(i) for i in range(16)]
     dbdatadir = "/data/local/keisuke/pgdata/"
 
     perfevents = (
@@ -228,7 +228,27 @@ class query_runner(object):
                 if self.iotraceflg: pbt.kill()
         return elapsed
 
-def main(qfile, nquery = None):
+def iterbysl(qfile, nquery = None):
+    iteration = 5
+    outdir = "/data/local/keisuke/tpch/" +  time.strftime("%Y%m%d%H%M%S", time.gmtime())
+    os.mkdir(outdir)
+    qr = query_runner(qfile)
+    #qr.confdict["--enable-iotracer=on"] = None
+    sys.stdout.write("Query :\n{0}\n".format(qr.query))
+    query = qr.query
+
+    sllist = [2 * 10 ** i for i in range(8)]
+    for i in range(iteration):
+        for j, sl in enumerate(sllist):
+            destdir = "{0}/selectivity{1}/{2}".format(outdir, sl, i)
+            os.makedirs(destdir)
+            if "root" == qr.user: os.chmod(destdir, 0777)
+            sys.stdout.write("Execution count : {0} (selectivity = {1})\n".format(i, sl))
+            qr.query = query.format(selectivity = sl)
+            if nquery != None: elapsed = qr.run_multiquery_wperf(destdir, nquery)
+            else: elapsed = qr.run_query_wperf(destdir)
+
+def iterbyworkmem(qfile, nquery = None):
     iteration = 5
     outdir = "/data/local/keisuke/tpch/" +  time.strftime("%Y%m%d%H%M%S", time.gmtime())
     os.mkdir(outdir)
@@ -273,5 +293,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     qfile = sys.argv[1]
-    main(qfile)
-    #for i in range(4, 7): main(qfile, 1 << i)
+    #iterbyworkmem(qfile)
+    #for i in range(4, 7): iterbyworkmem(qfile, 1 << i)
+    iterbysl(qfile)
