@@ -213,8 +213,8 @@ class workmem_plotter(object):
         gp('set yrange[0:*]')
         gp('set y2range [0:100]')
         gp('set y2tic 10')
-        # gp('set key inside right bottom')
-        gp('set key outside width -7')
+        gp('set key inside right bottom')
+        #gp('set key outside width -7')
         if terminaltype == "eps": gp('set size 1.4,1')
         gds = []
         query = "select distinct workmem from measurement order by workmem"
